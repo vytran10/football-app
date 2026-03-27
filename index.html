@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>⚽ Team Manager</title>
+  <title>⚽ Team Manager PRO</title>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -9,12 +9,15 @@
 </head>
 <body>
 
-<h2>⚽ Team Manager</h2>
+<h2>⚽ Team Manager PRO</h2>
 
 <button onclick="login()">Login Google</button>
 <button onclick="createMatch()">Tạo trận</button>
 
 <p id="user"></p>
+
+<h3>📋 Danh sách trận</h3>
+<div id="matches"></div>
 
 <script>
 const firebaseConfig = {
@@ -27,9 +30,13 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+let currentUser = null;
+
 auth.onAuthStateChanged(user => {
   if(user){
+    currentUser = user;
     document.getElementById("user").innerText = "Xin chào: " + user.displayName;
+    loadMatches();
   }
 });
 
@@ -39,18 +46,125 @@ function login(){
 }
 
 function createMatch(){
-  const user = auth.currentUser;
-  if(!user){
-    alert("Login trước!");
-    return;
-  }
-
   db.collection("matches").add({
-    host: user.email,
+    host: currentUser.email,
     created: new Date(),
+    players: [],
+    teamA: [],
+    teamB: [],
+    result: null
+  });
+}
+
+// load danh sách trận
+function loadMatches(){
+  db.collection("matches").onSnapshot(snapshot => {
+    let html = "";
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      html += `
+        <div style="border:1px solid #000; margin:10px; padding:10px;">
+          <p>Match ID: ${doc.id}</p>
+
+          <button onclick="joinMatch('${doc.id}')">✅ Đi đá</button>
+          <button onclick="leaveMatch('${doc.id}')">❌ Nghỉ</button>
+
+          <p>👥 Người chơi: ${data.players.length}</p>
+
+          <button onclick="splitTeam('${doc.id}')">⚽ Chia team</button>
+
+          <button onclick="setResult('${doc.id}', 'A')">A thắng</button>
+          <button onclick="setResult('${doc.id}', 'B')">B thắng</button>
+          <button onclick="setResult('${doc.id}', 'draw')">Hòa</button>
+
+          <p>🏆 Kết quả: ${data.result || "Chưa có"}</p>
+
+          <p>💰 Tiền:</p>
+          ${renderMoney(data)}
+
+        </div>
+      `;
+    });
+
+    document.getElementById("matches").innerHTML = html;
+  });
+}
+
+// tham gia
+function joinMatch(id){
+  db.collection("matches").doc(id).update({
+    players: firebase.firestore.FieldValue.arrayUnion(currentUser.email)
+  });
+}
+
+// nghỉ
+function leaveMatch(id){
+  db.collection("matches").doc(id).update({
+    players: firebase.firestore.FieldValue.arrayRemove(currentUser.email)
+  });
+}
+
+// chia team random
+function splitTeam(id){
+  const ref = db.collection("matches").doc(id);
+
+  ref.get().then(doc => {
+    let players = doc.data().players;
+
+    players.sort(() => Math.random() - 0.5);
+
+    let mid = Math.ceil(players.length / 2);
+
+    let teamA = players.slice(0, mid);
+    let teamB = players.slice(mid);
+
+    ref.update({
+      teamA,
+      teamB
+    });
+  });
+}
+
+// nhập kết quả
+function setResult(id, result){
+  db.collection("matches").doc(id).update({
+    result: result
+  });
+}
+
+// tính tiền
+function renderMoney(data){
+  if(!data.result || !data.teamA || !data.teamB) return "";
+
+  let html = "";
+
+  let win = 30000;
+  let lose = 40000;
+  let draw = 35000;
+
+  data.teamA.forEach(p => {
+    let money = 0;
+
+    if(data.result === "draw") money = draw;
+    else if(data.result === "A") money = win;
+    else money = lose;
+
+    html += `<p>${p}: ${money}đ</p>`;
   });
 
-  alert("Đã tạo trận!");
+  data.teamB.forEach(p => {
+    let money = 0;
+
+    if(data.result === "draw") money = draw;
+    else if(data.result === "B") money = win;
+    else money = lose;
+
+    html += `<p>${p}: ${money}đ</p>`;
+  });
+
+  return html;
 }
 </script>
 
