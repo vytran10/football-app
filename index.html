@@ -508,6 +508,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
 <div class="toast" id="toast"></div>
 
+<!-- NICKNAME MODAL -->
+<div class="mo" id="m-nick">
+  <div class="mb">
+    <div class="mb-handle"></div>
+    <div class="mtit">✏️ Đổi nickname <button class="mclose" onclick="CM('m-nick')">✕</button></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.6;">
+      Nickname sẽ hiển thị trong bình chọn, lịch sử trận và hồ sơ của bạn.
+    </div>
+    <div class="fg">
+      <label class="fl">Nickname mới</label>
+      <input class="fi" id="nick-input" placeholder="Nhập nickname..." maxlength="20"
+        style="font-size:16px;font-weight:700;" oninput="updateNickPreview()"/>
+      <div style="font-size:11px;color:var(--t3);margin-top:5px;display:flex;justify-content:space-between;">
+        <span>Tối đa 20 ký tự · Không dùng ký tự đặc biệt</span>
+        <span id="nick-count">0/20</span>
+      </div>
+    </div>
+    <div id="nick-preview" style="display:none;background:var(--s2);border:1px solid var(--border2);
+      border-radius:var(--rr);padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:8px;">Xem trước</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="pav av-g" id="nick-prev-av" style="font-size:14px;">?</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;" id="nick-prev-name">—</div>
+          <div style="font-size:11px;color:var(--t2);">Bình chọn · Lịch sử · Hồ sơ</div>
+        </div>
+      </div>
+    </div>
+    <div class="brow">
+      <button class="btn" style="flex:1" onclick="CM('m-nick')">Hủy</button>
+      <button class="btn btn-p" style="flex:2" onclick="saveNickname()">Lưu nickname ✓</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DIALOG -->
 <div class="mo" id="m-confirm">
   <div class="mb" style="max-height:auto;">
@@ -682,7 +717,7 @@ async function loadVote(hid) {
   const snap = await getDocs(collection(db,'matches'));
   const active = snap.docs.map(d=>({id:d.id,...d.data()}))
     .filter(m=>m.status!=='done')
-    .sort((a,b)=>(a.matchDate?.seconds||0)-(b.matchDate?.seconds||0));
+    .sort((a,b)=>(b.createdAt?.seconds||b.matchDate?.seconds||0)-(a.createdAt?.seconds||a.matchDate?.seconds||0));
 
   let html = '';
 
@@ -1147,11 +1182,9 @@ window.toggleMenu = el => { el.classList.toggle('open'); };
 window.markPaid = async (mid,uid,name,price) => {
   const ref=doc(db,'matches',mid), snap=await getDoc(ref);
   const m=snap.data()||{};
+  // Update match collectedAmount
   await updateDoc(ref,{[`payments.${uid}`]:true,collectedAmount:(m.collectedAmount||0)+price});
-  const fref=doc(db,'fund','main'), fsnap=await getDoc(fref);
-  const fund=fsnap.exists()?fsnap.data():{balance:0,txs:[]};
-  const tx={type:'add',amt:price,note:`${name} nộp`,mid,by:me.name,date:new Date().toLocaleDateString('vi-VN'),ts:Date.now()};
-  await setDoc(fref,{balance:(fund.balance||0)+price,txs:[...(fund.txs||[]),tx]});
+  // DO NOT touch fund.balance - fund calculates from collectedAmount sum across matches
   toast(`✅ ${name} đã nộp ${fM(price)}!`);loadManage();
 };
 
@@ -1159,106 +1192,314 @@ window.unmarkPaid = async (mid,uid,name,price) => {
   const ref=doc(db,'matches',mid), snap=await getDoc(ref);
   const m=snap.data()||{};
   await updateDoc(ref,{[`payments.${uid}`]:false,collectedAmount:Math.max(0,(m.collectedAmount||0)-price)});
-  toast(`↩ Đã hoàn lại trạng thái của ${name}`);loadManage();
+  toast(`↩ Đã hoàn lại: ${name} chưa nộp`);loadManage();
 };
 
 /* ══════════════════════════════════════════
-   FUND PAGE — Quỹ đội
+   FUND PAGE — Quỹ đội (Rebuilt)
+   Logic quỹ:
+   - balance = tổng nạp thủ công - tổng rút thủ công
+             + tổng tiền nộp từ trận (collectedAmount)
+   - Mỗi lần markPaid → tạo tx type='match_in'
+   - Nạp thủ công → tx type='add'
+   - Rút thủ công → tx type='sub'
+   - Admin có thể sửa/xóa tx thủ công (add/sub)
 ══════════════════════════════════════════ */
 let fundFilter='overview';
+let _fundCache=null, _msnap=null;
+
 async function loadFund() {
   const el=$('pg-fund'); el.innerHTML=spin();
-  const fref=doc(db,'fund','main'), fsnap=await getDoc(fref);
-  const fund=fsnap.exists()?fsnap.data():{balance:0,txs:[]};
-  const msnap=await getDocs(collection(db,'matches'));
-  let tc=0,tp=0;
-  msnap.docs.forEach(d=>{const m=d.data();if(m.status==='done'){tc+=(m.collectedAmount||0);tp+=(m.totalAmount||0)-(m.collectedAmount||0);}});
-
-  let html=`
-    <div class="sg">
-      <div class="sc"><div class="sl">Quỹ hiện tại</div><div class="sv" style="color:var(--g)">${fM(fund.balance||0)}</div></div>
-      <div class="sc"><div class="sl">Đã thu</div><div class="sv" style="color:var(--bl)">${fM(tc)}</div></div>
-      <div class="sc"><div class="sl">Còn thiếu</div><div class="sv" style="color:var(--r)">${fM(tp)}</div></div>
-    </div>
-    <div class="ftabs">
-      <button class="ftab ${fundFilter==='overview'?'on':''}" onclick="setFF('overview')">Tổng quan</button>
-      <button class="ftab ${fundFilter==='txs'?'on':''}" onclick="setFF('txs')">Giao dịch</button>
-      ${can('editFund')?`<button class="ftab ${fundFilter==='edit'?'on':''}" onclick="setFF('edit')">Điều chỉnh</button>`:''}
-    </div>
-    <div id="fund-body"></div>`;
-  el.innerHTML=html;
-  renderFund(fund, tc, tp);
+  await refreshFundCache();
+  renderFundShell();
 }
-function setFF(f){fundFilter=f;document.querySelectorAll('#pg-fund .ftab').forEach(t=>{const map={overview:'Tổng quan',txs:'Giao dịch',edit:'Điều chỉnh'};t.classList.toggle('on',t.textContent.trim()===map[f]);});renderFund(null,0,0,true);}
-window.setFF=setFF;
 
-async function renderFund(fund,tc,tp,reload=false){
-  if(reload){
-    const fsnap=await getDoc(doc(db,'fund','main'));
-    fund=fsnap.exists()?fsnap.data():{balance:0,txs:[]};
-    const msnap=await getDocs(collection(db,'matches'));
-    tc=0;tp=0;
-    msnap.docs.forEach(d=>{const m=d.data();if(m.status==='done'){tc+=(m.collectedAmount||0);tp+=(m.totalAmount||0)-(m.collectedAmount||0);}});
-  }
-  const el=$('fund-body'); if(!el)return;
-  let html='';
-  if(fundFilter==='overview'){
-    html+=`<div class="sh">📊 Tổng quan quỹ</div>
-      <div class="card" style="background:linear-gradient(135deg,var(--s2),rgba(92,184,71,.04));border-color:rgba(92,184,71,.15);">
-        <div style="font-size:12px;color:var(--t2);margin-bottom:4px;">Số dư quỹ đội</div>
-        <div style="font-size:38px;font-weight:900;color:var(--g);letter-spacing:-1px;">${fM(fund.balance||0)}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
-          <div style="background:var(--s3);border-radius:var(--rr);padding:10px;">
-            <div style="font-size:10px;color:var(--t2);margin-bottom:3px;">Đã thu từ trận</div>
-            <div style="font-size:18px;font-weight:800;color:var(--bl);">${fM(tc)}</div>
-          </div>
-          <div style="background:var(--s3);border-radius:var(--rr);padding:10px;">
-            <div style="font-size:10px;color:var(--t2);margin-bottom:3px;">Còn phải thu</div>
-            <div style="font-size:18px;font-weight:800;color:var(--r);">${fM(tp)}</div>
-          </div>
+async function refreshFundCache() {
+  const [fsnap, msnap] = await Promise.all([
+    getDoc(doc(db,'fund','main')),
+    getDocs(collection(db,'matches'))
+  ]);
+  _fundCache = fsnap.exists() ? fsnap.data() : {txs:[]};
+  _msnap = msnap;
+}
+
+function calcFundStats() {
+  const txs = _fundCache.txs || [];
+  // Manual adjustments
+  let manualIn=0, manualOut=0;
+  txs.forEach(t=>{
+    if(t.type==='add') manualIn+=t.amt||0;
+    else if(t.type==='sub') manualOut+=t.amt||0;
+  });
+  // From matches
+  let matchCollected=0, matchPending=0, matchTotal=0;
+  (_msnap?.docs||[]).forEach(d=>{
+    const m=d.data();
+    if(m.status!=='done') return;
+    matchCollected += m.collectedAmount||0;
+    const total = m.totalAmount||0;
+    matchTotal   += total;
+    matchPending += total - (m.collectedAmount||0);
+  });
+  // Balance = all money in - all money out
+  const balance = manualIn - manualOut + matchCollected;
+  return {balance, manualIn, manualOut, matchCollected, matchPending, matchTotal};
+}
+
+function renderFundShell() {
+  const el=$('pg-fund'); if(!el)return;
+  const {balance,matchCollected,matchPending,matchTotal} = calcFundStats();
+  const tabs = ['overview','txs','adjust'];
+  const tabLabels = {overview:'Tổng quan', txs:'Lịch sử', adjust:'Điều chỉnh'};
+  el.innerHTML=`
+    <!-- HERO BALANCE -->
+    <div class="card" style="background:linear-gradient(150deg,var(--s2),rgba(92,184,71,.06));border-color:rgba(92,184,71,.2);margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:700;">Số dư quỹ đội</div>
+      <div style="font-size:42px;font-weight:900;color:var(--g);letter-spacing:-2px;line-height:1;">${fM(balance)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px;">
+        <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Thu từ trận</div>
+          <div style="font-size:16px;font-weight:800;color:var(--bl);">${fM(matchCollected)}</div>
+        </div>
+        <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Còn thiếu</div>
+          <div style="font-size:16px;font-weight:800;color:var(--r);">${fM(matchPending)}</div>
+        </div>
+        <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Tổng trận</div>
+          <div style="font-size:16px;font-weight:800;">${fM(matchTotal)}</div>
         </div>
       </div>
-      <div class="sh">🔄 Giao dịch gần đây</div>`;
-    const txs=(fund.txs||[]).slice().reverse().slice(0,5);
-    html+=`<div class="card">${!txs.length?'<div class="empty"><div class="emt">Chưa có giao dịch</div></div>'
-      :txs.map(t=>`<div class="prow">
-        <div class="pav ${t.type==='add'?'av-g':'av-r'}" style="font-size:14px;">${t.type==='add'?'↑':'↓'}</div>
-        <div class="pi"><div class="pn">${t.note||'Giao dịch'}</div><div class="pd">${t.by} · ${t.date}</div></div>
-        <div style="font-size:13px;font-weight:800;color:${t.type==='add'?'var(--g)':'var(--r)'};">${t.type==='add'?'+':'-'}${fM(t.amt)}</div>
-      </div>`).join('')}</div>`;
+    </div>
+    <!-- TABS -->
+    <div class="ftabs">
+      <button class="ftab ${fundFilter==='overview'?'on':''}" onclick="setFF('overview')">Tổng quan</button>
+      <button class="ftab ${fundFilter==='txs'?'on':''}" onclick="setFF('txs')">Lịch sử</button>
+      ${can('editFund')?`<button class="ftab ${fundFilter==='adjust'?'on':''}" onclick="setFF('adjust')">Điều chỉnh</button>`:''}
+    </div>
+    <div id="fund-body"></div>`;
+  renderFundBody(balance,matchCollected,matchPending);
+}
+
+function renderFundBody(balance,matchCollected,matchPending) {
+  const el=$('fund-body'); if(!el)return;
+  const txs=(_fundCache.txs||[]).slice().sort((a,b)=>b.ts-a.ts);
+  const matchTxs=[];
+  (_msnap?.docs||[]).forEach(d=>{
+    const m=d.data();
+    if(m.status!=='done') return;
+    const payments=m.payments||{}, names=m.voteNames||{};
+    Object.entries(payments).filter(([,v])=>v===true).forEach(([uid])=>{
+      const name=names[uid]||uid;
+      const price=getPrice(m,uid);
+      matchTxs.push({type:'match_in',amt:price,note:`${name} nộp trận`,field:m.fieldName||'Sân bóng',date:m.dateLabel||d.id,ts:m.resultAt?.seconds||0,mid:d.id});
+    });
+  });
+  // All combined for history tab
+  const allTxs=[...txs.map(t=>({...t,_manual:true})), ...matchTxs].sort((a,b)=>b.ts-a.ts);
+
+  let html='';
+  if(fundFilter==='overview'){
+    html+=`<div class="sh">📋 Giao dịch gần đây</div>`;
+    const recent=allTxs.slice(0,8);
+    if(!recent.length){html+=`<div class="empty"><div class="emt">Chưa có giao dịch nào</div></div>`;}
+    else{
+      html+=`<div class="card">`;
+      recent.forEach(t=>{
+        const isIn=t.type==='add'||t.type==='match_in';
+        const ico=t.type==='match_in'?'⚽':isIn?'↑':'↓';
+        const clr=isIn?'var(--g)':'var(--r)';
+        const avcls=isIn?'av-g':'av-r';
+        html+=`<div class="prow">
+          <div class="pav ${avcls}" style="font-size:13px;">${ico}</div>
+          <div class="pi">
+            <div class="pn">${t.note||'Giao dịch'}${t.field?` · ${t.field}`:''}</div>
+            <div class="pd">${t.by||''} · ${t.date||''}</div>
+          </div>
+          <div style="font-size:13px;font-weight:800;color:${clr};">${isIn?'+':'-'}${fM(t.amt)}</div>
+        </div>`;
+      });
+      html+=`</div>`;
+      if(allTxs.length>8){html+=`<button class="btn btn-full" style="margin-top:4px;" onclick="setFF('txs')">Xem tất cả ${allTxs.length} giao dịch →</button>`;}
+    }
   }
   else if(fundFilter==='txs'){
-    html+=`<div class="sh">📜 Tất cả giao dịch</div>`;
-    const txs=(fund.txs||[]).slice().reverse();
-    html+=`<div class="card">${!txs.length?'<div class="empty"><div class="emt">Chưa có giao dịch</div></div>'
-      :txs.map(t=>`<div class="prow">
-        <div class="pav ${t.type==='add'?'av-g':'av-r'}" style="font-size:14px;">${t.type==='add'?'↑':'↓'}</div>
-        <div class="pi"><div class="pn">${t.note||'Giao dịch'}</div><div class="pd">${t.by||''} · ${t.date||''}</div></div>
-        <div style="font-size:13px;font-weight:800;color:${t.type==='add'?'var(--g)':'var(--r)'};">${t.type==='add'?'+':'-'}${fM(t.amt)}</div>
-      </div>`).join('')}</div>`;
+    html+=`<div class="sh">📜 Toàn bộ lịch sử (${allTxs.length})</div>`;
+    if(!allTxs.length){html+=`<div class="empty"><div class="emt">Chưa có giao dịch</div></div>`;}
+    else{
+      // Group by month
+      const groups={};
+      allTxs.forEach(t=>{
+        const d=new Date((t.ts||0)*1000);
+        const key=t.ts?`${d.getMonth()+1}/${d.getFullYear()}`:'Không rõ thời gian';
+        if(!groups[key])groups[key]=[];
+        groups[key].push(t);
+      });
+      Object.entries(groups).forEach(([month,items])=>{
+        const monthTotal=items.reduce((s,t)=>(t.type==='add'||t.type==='match_in'?s+t.amt:s-t.amt),0);
+        html+=`<div class="sh" style="margin-top:14px;">${month} <span style="font-weight:700;color:${monthTotal>=0?'var(--g)':'var(--r)'};">${monthTotal>=0?'+':''}${fM(monthTotal)}</span></div>
+          <div class="card">`;
+        items.forEach((t,idx)=>{
+          const isIn=t.type==='add'||t.type==='match_in';
+          const ico=t.type==='match_in'?'⚽':isIn?'↑':'↓';
+          const clr=isIn?'var(--g)':'var(--r)';
+          const avcls=isIn?'av-g':'av-r';
+          html+=`<div class="prow">
+            <div class="pav ${avcls}" style="font-size:13px;">${ico}</div>
+            <div class="pi">
+              <div class="pn">${t.note||'Giao dịch'}${t.field?` <span style="color:var(--t3)">· ${t.field}</span>`:''}</div>
+              <div class="pd">${t.by||''} · ${t.date||''} · ${t.type==='match_in'?'Thu từ trận':t.type==='add'?'Nạp thủ công':'Rút thủ công'}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px;font-weight:800;color:${clr};">${isIn?'+':'-'}${fM(t.amt)}</div>
+              ${t._manual&&can('editFund')?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;">
+                <button class="btn btn-sm" style="padding:3px 8px;font-size:10px;" onclick="editTx(${idx},'${t.type}',${t.amt},'${(t.note||'').replace(/'/g,"\'")}')">✏️</button>
+                <button class="btn btn-sm btn-r" style="padding:3px 8px;font-size:10px;" onclick="deleteTx(${idx})">🗑️</button>
+              </div>`:''}
+            </div>
+          </div>`;
+        });
+        html+=`</div>`;
+      });
+    }
   }
-  else{
-    html+=`<div class="sh">✏️ Điều chỉnh quỹ</div>
+  else{ // adjust
+    html+=`<div class="sh">✏️ Thêm giao dịch thủ công</div>
       <div class="card">
-        <div class="fg"><label class="fl">Số tiền</label><input class="fi" type="number" id="f-amt" placeholder="0"/></div>
-        <div class="fg"><label class="fl">Loại</label>
-          <select class="fi" id="f-type"><option value="add">+ Nạp vào quỹ</option><option value="sub">– Rút từ quỹ</option></select>
+        <div class="fg"><label class="fl">Loại giao dịch</label>
+          <select class="fi" id="f-type">
+            <option value="add">+ Nạp vào quỹ (thu tiền, tài trợ...)</option>
+            <option value="sub">– Rút khỏi quỹ (chi phí, sân bóng...)</option>
+          </select>
         </div>
-        <div class="fg"><label class="fl">Ghi chú</label><input class="fi" id="f-note" placeholder="Mô tả giao dịch..."/></div>
-        <button class="btn btn-p btn-full" onclick="submitFund()">Cập nhật quỹ</button>
-      </div>`;
+        <div class="fg"><label class="fl">Số tiền (đ)</label><input class="fi" type="number" id="f-amt" placeholder="VD: 200000"/></div>
+        <div class="fg"><label class="fl">Ghi chú *</label><input class="fi" id="f-note" placeholder="VD: Chi tiền thuê sân tháng 3..."/></div>
+        <button class="btn btn-p btn-full" onclick="submitFund()">Thêm giao dịch ✓</button>
+      </div>
+      ${can('manageTeam')?`
+      <div class="sh">⚙️ Đặt lại số dư quỹ (Admin)</div>
+      <div class="card" style="border-color:rgba(240,192,64,.2);">
+        <div style="font-size:12px;color:var(--am);margin-bottom:10px;">⚠️ Chỉ dùng để hiệu chỉnh khi số liệu sai. Thao tác này ghi đè số dư thực tế.</div>
+        <div class="fg"><label class="fl">Đặt số dư thành</label><input class="fi" type="number" id="f-override" placeholder="0"/></div>
+        <div class="fg"><label class="fl">Lý do</label><input class="fi" id="f-override-note" placeholder="VD: Hiệu chỉnh lại số liệu..."/></div>
+        <button class="btn btn-gold btn-full" onclick="overrideFund()">Đặt lại số dư</button>
+      </div>`:''}`;
   }
   el.innerHTML=html;
 }
+
+function setFF(f){
+  fundFilter=f;
+  document.querySelectorAll('#pg-fund .ftab').forEach(t=>{
+    const map={overview:'Tổng quan',txs:'Lịch sử',adjust:'Điều chỉnh'};
+    t.classList.toggle('on',t.textContent.trim()===map[f]);
+  });
+  const {balance,matchCollected,matchPending}=calcFundStats();
+  renderFundBody(balance,matchCollected,matchPending);
+}
+window.setFF=setFF;
+
 window.submitFund = async () => {
-  const amt=parseInt($('f-amt').value)||0, type=$('f-type').value, note=$('f-note').value||'Giao dịch';
+  const amt=parseInt($('f-amt').value)||0;
+  const type=$('f-type').value;
+  const note=($('f-note').value||'').trim();
   if(amt<=0){toast('Nhập số tiền!','err');return;}
+  if(!note){toast('Nhập ghi chú cho giao dịch!','err');return;}
   const ref=doc(db,'fund','main'), snap=await getDoc(ref);
-  const fund=snap.exists()?snap.data():{balance:0,txs:[]};
-  const newBal=type==='add'?(fund.balance||0)+amt:(fund.balance||0)-amt;
-  const tx={type,amt,note,by:me.name,date:new Date().toLocaleDateString('vi-VN'),ts:Date.now()};
-  await setDoc(ref,{balance:newBal,txs:[...(fund.txs||[]),tx]});
-  toast('✅ Đã cập nhật quỹ!'); loadFund();
+  const fund=snap.exists()?snap.data():{txs:[]};
+  const tx={type,amt,note,by:me.name,date:new Date().toLocaleDateString('vi-VN'),ts:Date.now()/1000|0};
+  const newTxs=[...(fund.txs||[]),tx];
+  await setDoc(ref,{...fund,txs:newTxs});
+  $('f-amt').value=$('f-note').value='';
+  toast(`✅ Đã thêm giao dịch ${type==='add'?'nạp':'rút'} ${fM(amt)}!`);
+  await refreshFundCache(); renderFundShell();
+};
+
+/* edit a manual tx */
+window.editTx = (idx, type, amt, note) => {
+  // find in sorted array — we need to map back to original index
+  const txs=(_fundCache.txs||[]).slice().sort((a,b)=>b.ts-a.ts);
+  const origTxs=_fundCache.txs||[];
+  const target=txs[idx];
+  // Find original index by ts+amt+note
+  const origIdx=origTxs.findIndex(t=>t.ts===target.ts&&t.amt===target.amt&&t.note===target.note&&t.type===target.type);
+  if(origIdx===-1){toast('Không tìm thấy giao dịch','err');return;}
+  showConfirm(
+    `✏️ Sửa giao dịch`,
+    `"${note}" — ${fM(amt)}
+
+Nhập số tiền và ghi chú mới trong form Điều chỉnh.`,
+    'Mở Điều chỉnh','btn-p',()=>{
+      setFF('adjust');
+      setTimeout(()=>{
+        if($('f-type'))$('f-type').value=type;
+        if($('f-amt'))$('f-amt').value=amt;
+        if($('f-note'))$('f-note').value=note;
+        // store pending edit
+        window._editIdx=origIdx;
+        const btn=$('fund-body').querySelector('.btn-p');
+        if(btn){btn.textContent='Cập nhật giao dịch ✓';btn.onclick=()=>updateTx(origIdx);}
+      },100);
+    }
+  );
+};
+
+window.updateTx = async (origIdx) => {
+  const amt=parseInt($('f-amt').value)||0;
+  const type=$('f-type').value;
+  const note=($('f-note').value||'').trim();
+  if(amt<=0||!note){toast('Nhập đủ thông tin!','err');return;}
+  const ref=doc(db,'fund','main');
+  const snap=await getDoc(ref);
+  const fund=snap.exists()?snap.data():{txs:[]};
+  const txs=[...(fund.txs||[])];
+  txs[origIdx]={...txs[origIdx],type,amt,note,editBy:me.name,editDate:new Date().toLocaleDateString('vi-VN')};
+  await setDoc(ref,{...fund,txs});
+  window._editIdx=null;
+  toast('✅ Đã cập nhật giao dịch!');
+  await refreshFundCache(); renderFundShell();
+};
+
+window.deleteTx = (idx) => {
+  const txs=(_fundCache.txs||[]).slice().sort((a,b)=>b.ts-a.ts);
+  const origTxs=_fundCache.txs||[];
+  const target=txs[idx];
+  const origIdx=origTxs.findIndex(t=>t.ts===target.ts&&t.amt===target.amt&&t.note===target.note&&t.type===target.type);
+  showConfirm(
+    '🗑️ Xóa giao dịch này?',
+    `"${target.note}" — ${target.type==='add'?'+':'-'}${fM(target.amt)}
+
+Thao tác này không thể hoàn lại.`,
+    'Xóa','btn-r',
+    async()=>{
+      const ref=doc(db,'fund','main'), snap=await getDoc(ref);
+      const fund=snap.exists()?snap.data():{txs:[]};
+      const newTxs=(fund.txs||[]).filter((_,i)=>i!==origIdx);
+      await setDoc(ref,{...fund,txs:newTxs});
+      toast('🗑️ Đã xóa giao dịch!');
+      await refreshFundCache(); renderFundShell();
+    }
+  );
+};
+
+window.overrideFund = async () => {
+  const val=parseInt($('f-override')?.value)||0;
+  const note=($('f-override-note')?.value||'').trim()||'Admin hiệu chỉnh số dư';
+  showConfirm(
+    '⚙️ Đặt lại số dư quỹ?',
+    `Số dư mới sẽ là ${fM(val)}. Một giao dịch hiệu chỉnh sẽ được ghi lại.`,
+    'Đặt lại','btn-gold',
+    async()=>{
+      const ref=doc(db,'fund','main'), snap=await getDoc(ref);
+      const fund=snap.exists()?snap.data():{txs:[]};
+      const {balance}=calcFundStats();
+      const diff=val-balance;
+      const tx={type:diff>=0?'add':'sub',amt:Math.abs(diff),note,by:me.name,date:new Date().toLocaleDateString('vi-VN'),ts:Date.now()/1000|0,isOverride:true};
+      await setDoc(ref,{...fund,txs:[...(fund.txs||[]),tx]});
+      toast(`✅ Đã hiệu chỉnh số dư thành ${fM(val)}!`);
+      await refreshFundCache(); renderFundShell();
+    }
+  );
 };
 
 /* ══════════════════════════════════════════
@@ -1397,10 +1638,20 @@ async function loadProfile() {
 
   let html=`
     <div class="phero">
-      <div class="ph-av">${me.name.charAt(0).toUpperCase()}</div>
+      <div style="position:relative;display:inline-block;margin:0 auto 12px;">
+        <div class="ph-av">${me.name.charAt(0).toUpperCase()}</div>
+        <button onclick="openNickModal()" style="position:absolute;bottom:-2px;right:-2px;
+          width:24px;height:24px;border-radius:50%;background:var(--g);border:2px solid var(--s2);
+          display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;">✏️</button>
+      </div>
       <div class="ph-name">${me.name}</div>
-      <div class="ph-email">${me.email}</div>
-      <div class="ph-role ${RBC[me.role]}">${RBL[me.role]}</div>
+      <div class="ph-email" style="font-size:11px;">${me.email}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <div class="ph-role ${RBC[me.role]}">${RBL[me.role]}</div>
+        <button onclick="openNickModal()" style="background:var(--s3);color:var(--t2);
+          border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:11px;
+          font-weight:700;cursor:pointer;font-family:inherit;">✏️ Đổi nickname</button>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
       <div class="sc"><div class="sl">Trận</div><div class="sv">${played}</div></div>
@@ -1449,6 +1700,90 @@ async function loadProfile() {
 
   el.innerHTML=html;
 }
+
+/* ── NICKNAME ── */
+window.openNickModal = () => {
+  const inp = $('nick-input');
+  inp.value = me.name;
+  updateNickPreview();
+  $('m-nick').classList.add('op');
+  setTimeout(() => { inp.focus(); inp.select(); }, 200);
+};
+
+window.updateNickPreview = () => {
+  const val = ($('nick-input').value||'').trim();
+  $('nick-count').textContent = `${val.length}/20`;
+  if (val.length > 0) {
+    $('nick-prev-av').textContent = val.charAt(0).toUpperCase();
+    $('nick-prev-name').textContent = val;
+    $('nick-preview').style.display = 'block';
+  } else {
+    $('nick-preview').style.display = 'none';
+  }
+};
+
+window.saveNickname = async () => {
+  const raw = ($('nick-input').value||'').trim();
+  // Validate
+  if (!raw) { toast('Nickname không được để trống!','err'); return; }
+  if (raw.length > 20) { toast('Tối đa 20 ký tự!','err'); return; }
+  if (/[<>"'`\/\\]/.test(raw)) { toast('Không dùng ký tự đặc biệt!','err'); return; }
+  if (raw === me.name) { CM('m-nick'); return; }
+
+  const oldName = me.name;
+  const newName = raw;
+
+  // 1. Update users doc
+  await updateDoc(doc(db,'users',me.uid), {name: newName});
+
+  // 2. Update voteNames in all matches where this user voted
+  const mSnap = await getDocs(collection(db,'matches'));
+  const updates = [];
+  mSnap.docs.forEach(d => {
+    const m = d.data();
+    const voteNames = m.voteNames||{};
+    const penaltyNames = m.penaltyNames||{};
+    const teams = m.teams||{R:[],B:[]};
+    let needsUpdate = false;
+    const patch = {};
+
+    // Update voteNames
+    if (voteNames[me.uid]) {
+      patch[`voteNames.${me.uid}`] = newName;
+      needsUpdate = true;
+    }
+    // Update penaltyNames
+    if (penaltyNames[me.uid]) {
+      patch[`penaltyNames.${me.uid}`] = newName;
+      needsUpdate = true;
+    }
+    // Update team arrays (R and B store display names)
+    if (teams.R?.includes(oldName)) {
+      patch['teams.R'] = teams.R.map(n => n===oldName ? newName : n);
+      needsUpdate = true;
+    }
+    if (teams.B?.includes(oldName)) {
+      patch['teams.B'] = teams.B.map(n => n===oldName ? newName : n);
+      needsUpdate = true;
+    }
+    if (needsUpdate) updates.push(updateDoc(d.ref, patch));
+  });
+
+  await Promise.all(updates);
+
+  // 3. Update local state
+  me.name = newName;
+
+  // 4. Update all visible UI
+  const L = newName.charAt(0).toUpperCase();
+  $('nav-av').textContent  = L;
+  $('pop-av').textContent  = L;
+  $('pop-name').textContent = newName;
+
+  CM('m-nick');
+  toast(`✅ Đã đổi nickname thành "${newName}"!`);
+  loadProfile(); // Reload profile to show new name
+};
 
 /* ── HELPERS ── */
 function fmtDate(d){
