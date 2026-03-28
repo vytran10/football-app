@@ -508,6 +508,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
 <div class="toast" id="toast"></div>
 
+<!-- CONFIRM DIALOG -->
+<div class="mo" id="m-confirm">
+  <div class="mb" style="max-height:auto;">
+    <div class="mb-handle"></div>
+    <div style="text-align:center;padding:8px 0 16px;">
+      <div style="font-size:28px;margin-bottom:10px;" id="conf-ico">⚠️</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:8px;" id="conf-title">Bạn chắc chưa?</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.6;" id="conf-desc"></div>
+    </div>
+    <div class="brow" style="margin-top:0;">
+      <button class="btn" style="flex:1" onclick="CM('m-confirm')">Hủy bỏ</button>
+      <button class="btn" id="conf-ok" style="flex:2">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -724,16 +740,27 @@ async function loadVote(hid) {
     let hCtrl='';
     if(can('lockVote')){
       hCtrl=`<div class="brow">
-        <button class="btn btn-sm ${locked?'btn-a':''}" onclick="toggleLock('${m.id}',${!locked})">${locked?'🔓 Mở khóa':'🔒 Khóa bình chọn'}</button>
-        <button class="btn btn-sm" onclick="openSplit('${m.id}')">⚔️ Chia đội</button>
-        <button class="btn btn-sm" onclick="openResult('${m.id}')">📝 Kết quả</button>
-        <button class="btn-share btn btn-sm" onclick="shareMatch('${m.id}','${dstr}')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-            <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-          </svg>Share Zalo
-        </button>
-        <button class="btn btn-sm btn-r" onclick="openPenalty('${m.id}')">⚠️ Phạt</button>
+        ${!locked?`
+          <button class="btn btn-sm" onclick="confirmLock('${m.id}')">🔒 Khóa bình chọn</button>
+          <button class="btn-share btn btn-sm" onclick="shareMatch('${m.id}','${dstr}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>Share Zalo
+          </button>
+          <button class="btn btn-sm btn-r" onclick="confirmCancel('${m.id}')">🗑️ Hủy trận</button>
+        `:`
+          <button class="btn btn-sm btn-a" onclick="confirmUnlock('${m.id}')">🔓 Mở khóa</button>
+          <button class="btn btn-sm" onclick="confirmSplit('${m.id}')">⚔️ Chia đội</button>
+          <button class="btn btn-sm" onclick="openResult('${m.id}')">📝 Kết quả</button>
+          <button class="btn-share btn btn-sm" onclick="shareMatch('${m.id}','${dstr}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>Share
+          </button>
+          <button class="btn btn-sm btn-r" onclick="openPenalty('${m.id}')">⚠️ Phạt</button>
+        `}
       </div>`;
     }
 
@@ -769,12 +796,20 @@ window.castVote = async (mid,choice) => {
   loadVote();
 };
 
-/* lock */
+/* lock + confirm dialogs */
 window.toggleLock = async (mid,locked) => {
   await updateDoc(doc(db,'matches',mid),{locked});
   toast(locked?'🔒 Đã khóa bình chọn!':'🔓 Đã mở khóa!');
   loadVote();
 };
+window.confirmLock = mid => showConfirm('🔒 Khóa bình chọn?','Sau khi khóa, cầu thủ sẽ không xem được danh sách và không bình chọn được nữa.','Khóa ngay','btn-a',()=>toggleLock(mid,true));
+window.confirmUnlock = mid => showConfirm('🔓 Mở khóa bình chọn?','Cầu thủ sẽ có thể bình chọn lại.','Mở khóa','btn-g',()=>toggleLock(mid,false));
+window.confirmSplit = mid => showConfirm('⚔️ Chia đội?','Chuyển sang màn hình phân đội Đỏ / Đen.','Chia đội','btn-p',()=>openSplit(mid));
+window.confirmCancel = mid => showConfirm('🗑️ Hủy trận này?','Thao tác này sẽ xóa trận và không thể hoàn lại!','Xóa trận','btn-r',async()=>{
+  const {deleteDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  await deleteDoc(doc(db,'matches',mid));
+  toast('🗑️ Đã hủy trận!'); loadVote();
+});
 
 /* share */
 window.shareMatch = (mid, dstr) => {
@@ -1264,48 +1299,62 @@ async function loadTeam() {
     </div>
     <div class="sh">👥 Thành viên đội</div>`;
 
-  Object.entries(stats).sort((a,b)=>b[1].owed-a[1].owed).forEach(([uid,s])=>{
+  // Deduplicate users by uid (safety)
+  const seenUids=new Set();
+  const uniqueEntries=Object.entries(stats).filter(([uid])=>{if(seenUids.has(uid))return false;seenUids.add(uid);return true;});
+  uniqueEntries.sort((a,b)=>{
+    const ro={admin:0,host:1,player:2};
+    if(ro[a[1].role]!==ro[b[1].role])return ro[a[1].role]-ro[b[1].role];
+    return b[1].owed-a[1].owed;
+  });
+
+  html+=`<div class="card" style="padding:4px 0;">`;
+  uniqueEntries.forEach(([uid,s])=>{
     const isOwner=s.email===ADMIN_EMAIL;
-    const wr=s.played>0?Math.round(s.wins/s.played*100):0;
-    html+=`<div class="card" style="padding:12px 14px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <div class="pav ${s.owed>0?'av-r':s.role==='admin'?'av-gold':s.role==='host'?'av-g':'av-b'}" style="width:42px;height:42px;font-size:15px;">
-          ${(s.name||'?').charAt(0).toUpperCase()}
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;">${s.name}</div>
-          <div style="font-size:10px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.email}</div>
-        </div>
-        ${isOwner?`<span class="rbadge rb-a" style="font-size:10px;">Owner</span>`:
-          `<select class="fi" style="padding:5px 8px;font-size:11px;width:96px;" onchange="setRole('${uid}',this.value)">
-            <option value="player" ${s.role==='player'?'selected':''}>Cầu thủ</option>
-            <option value="host"   ${s.role==='host'?'selected':''}>Host</option>
-            <option value="admin"  ${s.role==='admin'?'selected':''}>Admin</option>
-          </select>`}
+    const avCls=s.owed>0?'av-r':s.role==='admin'?'av-gold':s.role==='host'?'av-g':'av-b';
+    const roleLbl={admin:'Admin 👑',host:'Host 🏅',player:'Cầu thủ'}[s.role]||'Cầu thủ';
+    html+=`<div class="prow" style="align-items:flex-start;padding:12px 14px;">
+      <div class="pav ${avCls}" style="width:40px;height:40px;font-size:14px;flex-shrink:0;margin-top:2px;">
+        ${(s.name||'?').charAt(0).toUpperCase()}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;text-align:center;">
-        <div style="background:var(--s2);border-radius:var(--rr);padding:8px 4px;">
-          <div style="font-size:16px;font-weight:800;">${s.played}</div>
-          <div style="font-size:9px;color:var(--t3);margin-top:2px;">Trận</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+          <span style="font-size:13px;font-weight:700;">${s.name}</span>
+          <span class="rbadge ${s.role==='admin'?'rb-a':s.role==='host'?'rb-h':'rb-p'}" style="font-size:10px;">${roleLbl}</span>
+          ${s.owed>0?`<span class="pill pl-no">${fM(s.owed)}</span>`:'<span class="pill pl-ok">Sạch ✓</span>'}
         </div>
-        <div style="background:var(--gbg);border-radius:var(--rr);padding:8px 4px;">
-          <div style="font-size:16px;font-weight:800;color:var(--g);">${s.wins}</div>
-          <div style="font-size:9px;color:var(--t3);margin-top:2px;">Thắng</div>
-        </div>
-        <div style="background:var(--rbg);border-radius:var(--rr);padding:8px 4px;">
-          <div style="font-size:16px;font-weight:800;color:var(--r);">${s.losses}</div>
-          <div style="font-size:9px;color:var(--t3);margin-top:2px;">Thua</div>
-        </div>
-        <div style="background:${s.owed>0?'var(--rbg)':'var(--gbg)'};border-radius:var(--rr);padding:8px 4px;">
-          <div style="font-size:13px;font-weight:800;color:${s.owed>0?'var(--r)':'var(--g)'};">${s.owed>0?'-'+fM(s.owed):'✓'}</div>
-          <div style="font-size:9px;color:var(--t3);margin-top:2px;">${s.owed>0?'Nợ':'Sạch'}</div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.email}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:220px;">
+          <div style="background:var(--s3);border-radius:6px;padding:5px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;">${s.played}</div>
+            <div style="font-size:9px;color:var(--t3);">Trận</div>
+          </div>
+          <div style="background:var(--gbg);border-radius:6px;padding:5px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:var(--g);">${s.wins}</div>
+            <div style="font-size:9px;color:var(--t3);">Thắng</div>
+          </div>
+          <div style="background:var(--rbg);border-radius:6px;padding:5px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:var(--r);">${s.losses}</div>
+            <div style="font-size:9px;color:var(--t3);">Thua</div>
+          </div>
         </div>
       </div>
+      ${isOwner?'':`<select class="fi" style="padding:5px 8px;font-size:11px;width:90px;flex-shrink:0;margin-top:2px;" onchange="setRole('${uid}',this.value)">
+        <option value="player" ${s.role==='player'?'selected':''}>Cầu thủ</option>
+        <option value="host"   ${s.role==='host'?'selected':''}>Host</option>
+        <option value="admin"  ${s.role==='admin'?'selected':''}>Admin</option>
+      </select>`}
     </div>`;
   });
+  html+=`</div>`;
   el.innerHTML=html;
 }
-window.setRole = async (uid,role) => {await updateDoc(doc(db,'users',uid),{role});toast('✅ Đã cập nhật quyền!');loadTeam();};
+window.setRole = async (uid,role) => {
+  showConfirm(`Đổi quyền thành "${{player:'Cầu thủ',host:'Host',admin:'Admin'}[role]}"?`,'Thay đổi sẽ có hiệu lực ngay khi họ đăng nhập lại.','Xác nhận','btn-p',async()=>{
+    await updateDoc(doc(db,'users',uid),{role});
+    toast('✅ Đã cập nhật quyền!'); loadTeam();
+  });
+};
 
 /* ══════════════════════════════════════════
    PROFILE PAGE — Hồ sơ cá nhân
@@ -1406,6 +1455,20 @@ function fmtDate(d){
   const days=['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
   return `${days[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }
+
+/* ── CONFIRM DIALOG ── */
+window.showConfirm = (title, desc, okLabel, okCls, onOk) => {
+  const icos = {'btn-r':'🗑️','btn-a':'🔒','btn-g':'🔓','btn-p':'✅','btn-gold':'👑'};
+  $('conf-ico').textContent = icos[okCls]||'⚠️';
+  $('conf-title').textContent = title;
+  $('conf-desc').textContent = desc;
+  const btn = $('conf-ok');
+  btn.className = 'btn ' + okCls;
+  btn.style.flex = '2';
+  btn.textContent = okLabel;
+  btn.onclick = () => { CM('m-confirm'); onOk(); };
+  $('m-confirm').classList.add('op');
+};
 
 /* ── MODAL BACKDROP ── */
 document.querySelectorAll('.mo').forEach(o=>{
