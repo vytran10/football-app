@@ -948,21 +948,47 @@ window.saveResult = async () => {
   if(!resChoice){toast('Chọn kết quả!','err');return;}
   const ref=doc(db,'matches',resMid), snap=await getDoc(ref);
   if(!snap.exists())return;
-  const m=snap.data(), votes=m.votes||{}, names=m.voteNames||{};
+  const m=snap.data(), votes=m.votes||{};
   const inP=Object.entries(votes).filter(([,v])=>v==='in');
   const penalties=m.penalties||{};
   const teams=m.teams||{R:[],B:[]};
 
-  // Build payments map (who owes what)
-  const payments=m.payments||{};
-  // Mark amounts
+  // Calculate totalAmount = sum of what each player owes
+  // (based on team assignment and result)
+  let totalAmount=0;
+  inP.forEach(([uid])=>{
+    totalAmount += calcPlayerPrice(resChoice, uid, m.voteNames||{}, teams);
+  });
+  // Add penalties
+  const penCount=Object.values(penalties).filter(Boolean).length;
+  totalAmount += penCount * 40000;
+
   await updateDoc(ref,{
     status:'done', result:resChoice,
     resultLabel:RES_LBL[resChoice],
+    totalAmount,
+    collectedAmount: m.collectedAmount||0,
     resultAt:serverTimestamp()
   });
   CM('m-result'); toast('✅ Đã lưu kết quả!'); loadVote();
 };
+
+// Helper: calculate what a specific player owes given result + teams
+function calcPlayerPrice(result, uid, voteNames, teams) {
+  const name = voteNames[uid]||'';
+  if(result==='draw') return 35000;
+  if(result==='red'){
+    if(teams.R?.includes(name)) return 30000; // winner
+    if(teams.B?.includes(name)) return 40000; // loser
+    return 35000; // not assigned
+  }
+  if(result==='blk'){
+    if(teams.B?.includes(name)) return 30000; // winner
+    if(teams.R?.includes(name)) return 40000; // loser
+    return 35000;
+  }
+  return 35000;
+}
 
 /* penalty */
 let penMid='';
@@ -1055,20 +1081,7 @@ function setMF(f){manageFilter=f;document.querySelectorAll('.ftab').forEach(t=>{
 window.setMF=setMF;
 
 function getPrice(m,uid){
-  const teams=m.teams||{R:[],B:[]};
-  const res=m.result;
-  if(res==='draw') return 35000;
-  if(res==='red'){
-    if(teams.R?.includes((m.voteNames||{})[uid])) return 30000;
-    if(teams.B?.includes((m.voteNames||{})[uid])) return 40000;
-    return 35000;
-  }
-  if(res==='blk'){
-    if(teams.B?.includes((m.voteNames||{})[uid])) return 30000;
-    if(teams.R?.includes((m.voteNames||{})[uid])) return 40000;
-    return 35000;
-  }
-  return 35000;
+  return calcPlayerPrice(m.result||'draw', uid, m.voteNames||{}, m.teams||{R:[],B:[]});
 }
 
 function renderManage(all,debtors,debtMap){
@@ -1225,23 +1238,37 @@ async function refreshFundCache() {
 
 function calcFundStats() {
   const txs = _fundCache.txs || [];
-  // Manual adjustments
+  // Manual adjustments (host/admin entered manually)
   let manualIn=0, manualOut=0;
   txs.forEach(t=>{
     if(t.type==='add') manualIn+=t.amt||0;
     else if(t.type==='sub') manualOut+=t.amt||0;
   });
-  // From matches
+
+  // From matches: compute per-player what they owe vs what's been paid
   let matchCollected=0, matchPending=0, matchTotal=0;
   (_msnap?.docs||[]).forEach(d=>{
     const m=d.data();
     if(m.status!=='done') return;
-    matchCollected += m.collectedAmount||0;
-    const total = m.totalAmount||0;
-    matchTotal   += total;
-    matchPending += total - (m.collectedAmount||0);
+    const votes=m.votes||{}, payments=m.payments||{}, penalties=m.penalties||{};
+    const inP=Object.entries(votes).filter(([,v])=>v==='in');
+
+    inP.forEach(([uid])=>{
+      const price = getPrice(m,uid);
+      matchTotal += price;
+      if(payments[uid]===true) matchCollected += price;
+      else matchPending += price;
+    });
+
+    // Penalties (vắng mặt bị phạt)
+    Object.entries(penalties).filter(([,v])=>v===true).forEach(([uid])=>{
+      matchTotal += 40000;
+      if(payments['p_'+uid]===true) matchCollected += 40000;
+      else matchPending += 40000;
+    });
   });
-  // Balance = all money in - all money out
+
+  // Số dư thực = tiền thủ công nạp - rút + tiền đã thu từ trận
   const balance = manualIn - manualOut + matchCollected;
   return {balance, manualIn, manualOut, matchCollected, matchPending, matchTotal};
 }
@@ -1258,15 +1285,15 @@ function renderFundShell() {
       <div style="font-size:42px;font-weight:900;color:var(--g);letter-spacing:-2px;line-height:1;">${fM(balance)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px;">
         <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
-          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Thu từ trận</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Đã thu từ trận</div>
           <div style="font-size:16px;font-weight:800;color:var(--bl);">${fM(matchCollected)}</div>
         </div>
-        <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
-          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Còn thiếu</div>
-          <div style="font-size:16px;font-weight:800;color:var(--r);">${fM(matchPending)}</div>
+        <div style="background:${matchPending>0?'rgba(224,72,72,.1)':'var(--s3)'};border-radius:var(--rr);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Chưa thu</div>
+          <div style="font-size:16px;font-weight:800;color:${matchPending>0?'var(--r)':'var(--g)'};">${matchPending>0?fM(matchPending):'✓ Hết'}</div>
         </div>
         <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
-          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Tổng trận</div>
+          <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Tổng cần thu</div>
           <div style="font-size:16px;font-weight:800;">${fM(matchTotal)}</div>
         </div>
       </div>
