@@ -1,67 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>⚽ Uhihihaha Team</title>
+  <title>⚽ Uhihihaha Team PRO</title>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <style>
-    body {
-      font-family: Arial;
-      margin:0;
-      background:#0f172a;
-      color:white;
-    }
-
-    header {
-      padding:15px;
-      background:#1e293b;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-
-    .tabs {
-      display:flex;
-      background:#111827;
-    }
-
-    .tab {
-      padding:12px;
-      cursor:pointer;
-      flex:1;
-      text-align:center;
-    }
-
-    .active {
-      background:#2563eb;
-    }
-
-    .container {
-      padding:15px;
-    }
-
-    .card {
-      background:#1e293b;
-      padding:15px;
-      margin-bottom:10px;
-      border-radius:12px;
-    }
-
-    button {
-      margin:4px;
-      padding:6px 10px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-    }
-
-    .btn-blue { background:#3b82f6; color:white }
-    .btn-red { background:#ef4444 }
-    .btn-green { background:#22c55e }
-
+    body { font-family: Arial; margin:0; background:#0f172a; color:white }
+    header { padding:15px; background:#1e293b; display:flex; justify-content:space-between }
+    .tabs { display:flex; background:#111827 }
+    .tab { flex:1; text-align:center; padding:12px; cursor:pointer }
+    .active { background:#2563eb }
+    .container { padding:15px }
+    .card { background:#1e293b; padding:15px; margin-bottom:10px; border-radius:10px }
+    button { margin:3px; padding:6px 10px; border:none; border-radius:6px; cursor:pointer }
+    .blue { background:#3b82f6; color:white }
+    .red { background:#ef4444 }
+    .green { background:#22c55e }
   </style>
 </head>
 
@@ -71,41 +28,36 @@
   <div>⚽ Uhihihaha Team</div>
   <div>
     <span id="user"></span> | <span id="role"></span>
+    <button onclick="logout()">🚪</button>
   </div>
 </header>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('match')">⚽ Trận</div>
-  <div class="tab" onclick="switchTab('profile')">👤 Hồ sơ</div>
-  <div class="tab" onclick="switchTab('fund')">💰 Quỹ</div>
+  <div class="tab active" onclick="tab('match')">⚽</div>
+  <div class="tab" onclick="tab('profile')">👤</div>
+  <div class="tab" onclick="tab('money')">💰</div>
 </div>
 
 <div class="container">
 
-  <div id="matchTab">
-    <button class="btn-blue" onclick="createMatch()">➕ Tạo trận</button>
-    <div id="matches"></div>
-  </div>
+<div id="matchTab">
+<button class="blue" onclick="createMatch()">➕ Tạo trận</button>
+<div id="matches"></div>
+</div>
 
-  <div id="profileTab" style="display:none">
-    <div class="card">
-      <h3>👤 Hồ sơ</h3>
-      <p id="profileInfo"></p>
-    </div>
-  </div>
+<div id="profileTab" style="display:none">
+<div class="card"><h3>Hồ sơ</h3><p id="profile"></p></div>
+</div>
 
-  <div id="fundTab" style="display:none">
-    <div class="card">
-      <h3>💰 Quỹ đội</h3>
-      <p>Đang phát triển...</p>
-    </div>
-  </div>
+<div id="moneyTab" style="display:none">
+<div class="card"><h3>💰 Công nợ</h3><div id="debts"></div></div>
+</div>
 
 </div>
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyB7q5q9PRzhfRTJO4w2bjOM8p9FGJrdlN4",
+  apiKey: "AIzaSy...",
   authDomain: "uhihihaha-4dbdf.firebaseapp.com",
   projectId: "uhihihaha-4dbdf",
 };
@@ -114,134 +66,171 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let currentUser = null;
-let currentRole = "player";
+let user, role="player";
 
-function switchTab(tab){
-  document.getElementById("matchTab").style.display="none";
-  document.getElementById("profileTab").style.display="none";
-  document.getElementById("fundTab").style.display="none";
+function logout(){ auth.signOut(); location.reload(); }
 
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+function tab(t){
+  matchTab.style.display="none";
+  profileTab.style.display="none";
+  moneyTab.style.display="none";
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
 
-  if(tab==="match"){
-    document.getElementById("matchTab").style.display="block";
-    document.querySelectorAll(".tab")[0].classList.add("active");
-  }
-  if(tab==="profile"){
-    document.getElementById("profileTab").style.display="block";
-    document.querySelectorAll(".tab")[1].classList.add("active");
-  }
-  if(tab==="fund"){
-    document.getElementById("fundTab").style.display="block";
-    document.querySelectorAll(".tab")[2].classList.add("active");
-  }
+  if(t==="match"){ matchTab.style.display="block"; document.querySelectorAll(".tab")[0].classList.add("active"); }
+  if(t==="profile"){ profileTab.style.display="block"; document.querySelectorAll(".tab")[1].classList.add("active"); }
+  if(t==="money"){ moneyTab.style.display="block"; document.querySelectorAll(".tab")[2].classList.add("active"); }
 }
 
-// LOGIN
-auth.onAuthStateChanged(async user => {
-  if(user){
-    currentUser = user;
-
-    document.getElementById("user").innerText = user.email;
-
-    const ref = db.collection("users").doc(user.email);
-    const doc = await ref.get();
-
-    if(!doc.exists){
-      let role = user.email === "vytrantan1010@gmail.com" ? "admin" : "player";
-
-      await ref.set({
-        email:user.email,
-        name:user.displayName,
-        role:role,
-        totalMoney:0,
-        totalMatches:0
-      });
-
-      currentRole = role;
-    } else {
-      currentRole = doc.data().role;
-    }
-
-    document.getElementById("role").innerText = currentRole;
-
-    loadMatches();
-    loadProfile();
-  } else {
+auth.onAuthStateChanged(async u=>{
+  if(!u){
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  }
-});
-
-// CREATE MATCH
-function createMatch(){
-  if(currentRole==="player"){
-    alert("Không có quyền");
     return;
   }
 
+  user=u;
+  userDiv.innerText=u.email;
+
+  let ref=db.collection("users").doc(u.email);
+  let doc=await ref.get();
+
+  if(!doc.exists){
+    role = u.email==="vytrantan1010@gmail.com"?"admin":"player";
+    await ref.set({email:u.email,role,total:0});
+  } else role=doc.data().role;
+
+  roleDiv.innerText=role;
+
+  loadMatches();
+  loadProfile();
+  loadDebt();
+});
+
+function createMatch(){
+  if(role==="player") return alert("Không có quyền");
+
+  let time=prompt("Nhập ngày giờ:");
+
   db.collection("matches").add({
-    createdBy: currentUser.email,
-    createdAt: new Date(),
-    status:"open",
+    time,
     players:[],
-    result:null
+    result:null,
+    status:"open"
   });
 }
 
-// LOAD MATCH
 function loadMatches(){
-  db.collection("matches").onSnapshot(snap=>{
+  db.collection("matches").onSnapshot(s=>{
     let html="";
-
-    snap.forEach(doc=>{
-      const d=doc.data();
-      const players=d.players||[];
+    s.forEach(d=>{
+      let m=d.data();
+      let p=m.players||[];
 
       html+=`
-        <div class="card">
-          <p>👥 ${players.length} người</p>
+      <div class="card">
+        <p>🕒 ${m.time||""}</p>
+        <p>👥 ${p.length}</p>
 
-          <button class="btn-green" onclick="join('${doc.id}')">Đi đá</button>
-          <button class="btn-red" onclick="leave('${doc.id}')">Nghỉ</button>
+        <button class="green" onclick="join('${d.id}')">Đi</button>
+        <button class="red" onclick="leave('${d.id}')">Nghỉ</button>
 
-          ${currentRole!=="player"?`
-            <button onclick="result('${doc.id}','A')">Đỏ thắng</button>
-            <button onclick="result('${doc.id}','B')">Đen thắng</button>
-            <button onclick="result('${doc.id}','draw')">Hòa</button>
-          `:""}
+        <button onclick="lock('${d.id}')">🔒</button>
 
-          <p>KQ: ${d.result||"Chưa có"}</p>
-        </div>
-      `;
+        <button onclick="split('${d.id}')">⚽</button>
+
+        <button onclick="result('${d.id}','A')">Đỏ</button>
+        <button onclick="result('${d.id}','B')">Đen</button>
+        <button onclick="result('${d.id}','draw')">Hòa</button>
+
+        <p>KQ: ${m.result||""}</p>
+
+        ${renderMoney(d.id,m)}
+      </div>`;
     });
 
-    document.getElementById("matches").innerHTML=html;
+    matches.innerHTML=html;
   });
 }
 
 function join(id){
   db.collection("matches").doc(id).update({
-    players: firebase.firestore.FieldValue.arrayUnion(currentUser.email)
+    players: firebase.firestore.FieldValue.arrayUnion(user.email)
   });
 }
 
 function leave(id){
   db.collection("matches").doc(id).update({
-    players: firebase.firestore.FieldValue.arrayRemove(currentUser.email)
+    players: firebase.firestore.FieldValue.arrayRemove(user.email)
+  });
+}
+
+function lock(id){
+  db.collection("matches").doc(id).update({status:"locked"});
+}
+
+function split(id){
+  db.collection("matches").doc(id).get().then(doc=>{
+    let p=doc.data().players||[];
+    p.sort(()=>Math.random()-0.5);
+    let mid=Math.ceil(p.length/2);
+
+    db.collection("matches").doc(id).update({
+      teamA:p.slice(0,mid),
+      teamB:p.slice(mid)
+    });
   });
 }
 
 function result(id,res){
   db.collection("matches").doc(id).update({result:res});
+
+  db.collection("matches").doc(id).get().then(doc=>{
+    let m=doc.data();
+    let teamA=m.teamA||[], teamB=m.teamB||[];
+
+    teamA.forEach(u=>saveMoney(id,u,res==="A"?30000:res==="draw"?35000:40000));
+    teamB.forEach(u=>saveMoney(id,u,res==="B"?30000:res==="draw"?35000:40000));
+  });
+}
+
+function saveMoney(match,userEmail,amount){
+  db.collection("payments").add({
+    match,
+    user:userEmail,
+    amount,
+    paid:false
+  });
+}
+
+function renderMoney(id,m){
+  if(!m.result) return "";
+  return `<button onclick="viewDebt('${id}')">Xem tiền</button>`;
+}
+
+function viewDebt(id){
+  db.collection("payments").where("match","==",id).get().then(s=>{
+    let text="";
+    s.forEach(d=>{
+      let p=d.data();
+      text+=p.user+" : "+p.amount+"đ "+(p.paid?"✅":"❌")+"\n";
+    });
+    alert(text);
+  });
+}
+
+function loadDebt(){
+  db.collection("payments").where("user","==",user.email).onSnapshot(s=>{
+    let total=0;
+    let html="";
+    s.forEach(d=>{
+      let p=d.data();
+      if(!p.paid){ total+=p.amount; html+=p.amount+"đ<br>"; }
+    });
+    debts.innerHTML="Nợ: "+total+"đ<br>"+html;
+  });
 }
 
 function loadProfile(){
-  db.collection("users").doc(currentUser.email).get().then(doc=>{
-    const d=doc.data();
-    document.getElementById("profileInfo").innerText=
-      "Tên: "+d.name+"\nRole: "+d.role+"\nTổng trận: "+d.totalMatches;
-  });
+  profile.innerText="Email: "+user.email;
 }
 </script>
 
