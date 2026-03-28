@@ -1,23 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>⚽ Uhihihaha PRO MAX</title>
+  <title>⚽ Uhihihaha Team</title>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <style>
-    body{margin:0;font-family:sans-serif;background:#0f172a;color:white}
-    header{display:flex;justify-content:space-between;padding:15px;background:#1e293b}
-    button{padding:8px 12px;margin:4px;border:none;border-radius:6px;cursor:pointer}
-    .blue{background:#3b82f6;color:white}
-    .red{background:#ef4444}
-    .green{background:#22c55e}
-    .card{background:#1e293b;padding:15px;margin:10px;border-radius:10px}
-    .tabs{display:flex}
-    .tab{flex:1;text-align:center;padding:10px;background:#111827;cursor:pointer}
-    .active{background:#2563eb}
+    body { margin:0; font-family:Arial; background:#0f172a; color:white }
+    header { display:flex; justify-content:space-between; padding:15px; background:#1e293b }
+    button { padding:8px 12px; margin:4px; border:none; border-radius:6px; cursor:pointer }
+    .blue { background:#3b82f6; color:white }
+    .red { background:#ef4444 }
+    .green { background:#22c55e }
+    .card { background:#1e293b; padding:15px; margin:10px; border-radius:10px }
   </style>
 </head>
 
@@ -32,225 +29,209 @@
 
 <div id="app" style="display:none">
 
-<div class="tabs">
-  <div class="tab active" onclick="tab('match')">⚽</div>
-  <div class="tab" onclick="tab('money')">💰</div>
-  <div class="tab" onclick="tab('rank')">🏆</div>
-</div>
-
-<div id="matchTab">
   <button class="blue" onclick="createMatch()">➕ Tạo trận</button>
-  <div id="matches"></div>
-</div>
 
-<div id="moneyTab" style="display:none">
+  <div id="matches"></div>
+
   <div class="card">
-    <h3>💰 Công nợ</h3>
+    <h3>💰 Công nợ của tôi</h3>
     <div id="debts"></div>
   </div>
-</div>
-
-<div id="rankTab" style="display:none">
-  <div class="card">
-    <h3>🏆 BXH</h3>
-    <div id="rank"></div>
-  </div>
-</div>
 
 </div>
 
 <script>
-const firebaseConfig={
- apiKey:"AIzaSy...",
- authDomain:"uhihihaha-4dbdf.firebaseapp.com",
- projectId:"uhihihaha-4dbdf"
+// 🔥 CONFIG CHUẨN CỦA ANH
+const firebaseConfig = {
+  apiKey: "AIzaSyB7q5q9PRzhfRTJO4w2bjOM8p9FGJrdlN4",
+  authDomain: "uhihihaha-4dbdf.firebaseapp.com",
+  projectId: "uhihihaha-4dbdf",
+  storageBucket: "uhihihaha-4dbdf.firebasestorage.app",
+  messagingSenderId: "255192820788",
+  appId: "1:255192820788:web:408e81240f26e351b3ae61",
+  measurementId: "G-7HMNNQ2QGW"
 };
+
 firebase.initializeApp(firebaseConfig);
 
-const auth=firebase.auth();
-const db=firebase.firestore();
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-let user,role="player";
+let currentUser = null;
+let role = "player";
 
-// LOGIN / LOGOUT
+// LOGIN
 function login(){
-  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
 }
+
+// LOGOUT
 function logout(){
   auth.signOut();
 }
 
-// AUTH STATE
-auth.onAuthStateChanged(async u=>{
-  if(!u){
-    document.getElementById("app").style.display="none";
-    document.getElementById("authBox").innerHTML=
+// CHECK LOGIN
+auth.onAuthStateChanged(async user => {
+
+  if(!user){
+    document.getElementById("app").style.display = "none";
+    document.getElementById("authBox").innerHTML =
       `<button class="blue" onclick="login()">Login</button>`;
     return;
   }
 
-  user=u;
+  currentUser = user;
 
-  let ref=db.collection("users").doc(u.email);
-  let doc=await ref.get();
+  let ref = db.collection("users").doc(user.email);
+  let doc = await ref.get();
 
   if(!doc.exists){
-    role=u.email==="vytrantan1010@gmail.com"?"admin":"player";
-    await ref.set({email:u.email,role});
-  }else role=doc.data().role;
+    role = user.email === "vytrantan1010@gmail.com" ? "admin" : "player";
 
-  document.getElementById("authBox").innerHTML=
-    `${u.email} (${role}) <button onclick="logout()">Logout</button>`;
+    await ref.set({
+      email: user.email,
+      role: role
+    });
+  } else {
+    role = doc.data().role;
+  }
 
-  document.getElementById("app").style.display="block";
+  document.getElementById("authBox").innerHTML =
+    user.email + " (" + role + ") <button onclick='logout()'>Logout</button>";
+
+  document.getElementById("app").style.display = "block";
 
   loadMatches();
   loadDebt();
-  loadRank();
 });
 
-// TAB
-function tab(t){
-  matchTab.style.display="none";
-  moneyTab.style.display="none";
-  rankTab.style.display="none";
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-
-  if(t==="match"){matchTab.style.display="block";document.querySelectorAll(".tab")[0].classList.add("active")}
-  if(t==="money"){moneyTab.style.display="block";document.querySelectorAll(".tab")[1].classList.add("active")}
-  if(t==="rank"){rankTab.style.display="block";document.querySelectorAll(".tab")[2].classList.add("active")}
-}
-
-// MATCH
+// TẠO TRẬN
 function createMatch(){
- if(role==="player") return alert("No quyền");
+  if(role === "player"){
+    alert("Không có quyền");
+    return;
+  }
 
- let time=prompt("Ngày giờ:");
+  let time = prompt("Nhập ngày giờ (VD: 30/03 18:30)");
 
- db.collection("matches").add({
-  time,
-  players:[],
-  teamA:[],
-  teamB:[],
-  result:null,
-  status:"open"
- });
+  db.collection("matches").add({
+    time: time,
+    players: [],
+    teamA: [],
+    teamB: [],
+    result: null
+  });
 }
 
+// LOAD MATCH
 function loadMatches(){
- db.collection("matches").onSnapshot(s=>{
-  let html="";
-  s.forEach(d=>{
-   let m=d.data(); let p=m.players||[];
+  db.collection("matches").onSnapshot(snapshot => {
 
-   html+=`
-   <div class="card">
-    <p>🕒 ${m.time||""}</p>
-    <p>👥 ${p.length}</p>
+    let html = "";
 
-    <button class="green" onclick="join('${d.id}')">Đi</button>
-    <button class="red" onclick="leave('${d.id}')">Nghỉ</button>
+    snapshot.forEach(doc => {
+      let m = doc.data();
+      let players = m.players || [];
 
-    <button onclick="split('${d.id}')">⚽</button>
-    <button onclick="lock('${d.id}')">🔒</button>
+      html += `
+        <div class="card">
+          <p>🕒 ${m.time || ""}</p>
+          <p>👥 ${players.length} người</p>
 
-    <button onclick="result('${d.id}','A')">Đỏ</button>
-    <button onclick="result('${d.id}','B')">Đen</button>
-    <button onclick="result('${d.id}','draw')">Hòa</button>
+          <button class="green" onclick="join('${doc.id}')">Đi đá</button>
+          <button class="red" onclick="leave('${doc.id}')">Nghỉ</button>
 
-    <button onclick="penalty('${d.id}')">⚠️ Phạt</button>
+          <button onclick="split('${doc.id}')">Chia team</button>
 
-    <p>KQ: ${m.result||""}</p>
-   </div>`;
+          <button onclick="setResult('${doc.id}','A')">Đỏ thắng</button>
+          <button onclick="setResult('${doc.id}','B')">Đen thắng</button>
+          <button onclick="setResult('${doc.id}','draw')">Hòa</button>
+
+          <p>KQ: ${m.result || "Chưa có"}</p>
+        </div>
+      `;
+    });
+
+    document.getElementById("matches").innerHTML = html;
   });
-  matches.innerHTML=html;
- });
 }
 
+// JOIN
 function join(id){
- db.collection("matches").doc(id).update({
-  players:firebase.firestore.FieldValue.arrayUnion(user.email)
- });
-}
-
-function leave(id){
- db.collection("matches").doc(id).update({
-  players:firebase.firestore.FieldValue.arrayRemove(user.email)
- });
-}
-
-function lock(id){
- db.collection("matches").doc(id).update({status:"locked"});
-}
-
-function split(id){
- db.collection("matches").doc(id).get().then(doc=>{
-  let p=doc.data().players||[];
-  p.sort(()=>Math.random()-0.5);
-  let mid=Math.ceil(p.length/2);
   db.collection("matches").doc(id).update({
-   teamA:p.slice(0,mid),
-   teamB:p.slice(mid)
+    players: firebase.firestore.FieldValue.arrayUnion(currentUser.email)
   });
- });
 }
 
-// RESULT + MONEY
-function result(id,res){
- db.collection("matches").doc(id).update({result:res});
-
- db.collection("matches").doc(id).get().then(doc=>{
-  let m=doc.data();
-  let A=m.teamA||[],B=m.teamB||[];
-
-  A.forEach(u=>save(id,u,res==="A"?30000:res==="draw"?35000:40000));
-  B.forEach(u=>save(id,u,res==="B"?30000:res==="draw"?35000:40000));
- });
+// LEAVE
+function leave(id){
+  db.collection("matches").doc(id).update({
+    players: firebase.firestore.FieldValue.arrayRemove(currentUser.email)
+  });
 }
 
-function save(match,userEmail,amount){
- db.collection("payments").add({
-  match,user:userEmail,amount,paid:false
- });
+// CHIA TEAM
+function split(id){
+  db.collection("matches").doc(id).get().then(doc => {
+    let p = doc.data().players || [];
+
+    p.sort(() => Math.random() - 0.5);
+
+    let mid = Math.ceil(p.length / 2);
+
+    db.collection("matches").doc(id).update({
+      teamA: p.slice(0, mid),
+      teamB: p.slice(mid)
+    });
+  });
 }
 
-// PHẠT
-function penalty(match){
- let email=prompt("Nhập email bị phạt:");
- if(!email) return;
- save(match,email,40000);
+// KẾT QUẢ + TIỀN
+function setResult(id, result){
+  db.collection("matches").doc(id).update({ result });
+
+  db.collection("matches").doc(id).get().then(doc => {
+    let m = doc.data();
+    let teamA = m.teamA || [];
+    let teamB = m.teamB || [];
+
+    teamA.forEach(u => saveMoney(id, u, result === "A" ? 30000 : result === "draw" ? 35000 : 40000));
+    teamB.forEach(u => saveMoney(id, u, result === "B" ? 30000 : result === "draw" ? 35000 : 40000));
+  });
 }
 
-// NỢ
+// SAVE TIỀN
+function saveMoney(matchId, userEmail, amount){
+  db.collection("payments").add({
+    matchId: matchId,
+    user: userEmail,
+    amount: amount,
+    paid: false
+  });
+}
+
+// LOAD NỢ
 function loadDebt(){
- db.collection("payments").where("user","==",user.email).onSnapshot(s=>{
-  let total=0,html="";
-  s.forEach(d=>{
-   let p=d.data();
-   if(!p.paid){ total+=p.amount; html+=p.amount+"đ<br>"; }
-  });
-  debts.innerHTML="Tổng nợ: "+total+"đ<br>"+html;
- });
-}
+  db.collection("payments")
+    .where("user","==",currentUser.email)
+    .onSnapshot(snapshot => {
 
-// BXH
-function loadRank(){
- db.collection("payments").onSnapshot(s=>{
-  let map={};
+      let total = 0;
+      let html = "";
 
-  s.forEach(d=>{
-   let p=d.data();
-   if(!map[p.user]) map[p.user]=0;
-   map[p.user]+=p.amount;
-  });
+      snapshot.forEach(doc => {
+        let p = doc.data();
 
-  let html="";
-  Object.keys(map).sort((a,b)=>map[a]-map[b]).forEach(u=>{
-   html+=u+" : "+map[u]+"đ<br>";
-  });
+        if(!p.paid){
+          total += p.amount;
+          html += p.amount + "đ<br>";
+        }
+      });
 
-  rank.innerHTML=html;
- });
+      document.getElementById("debts").innerHTML =
+        "<b>Tổng nợ: " + total + "đ</b><br>" + html;
+    });
 }
 </script>
 
