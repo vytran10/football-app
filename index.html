@@ -1,33 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>⚽ Uhihihaha Team Manager</title>
+  <title>⚽ Uhihihaha Team</title>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <style>
-    body { font-family: Arial; padding:20px; background:#111; color:#fff }
-    button { margin:5px; padding:8px; border:none; border-radius:6px }
-    .card { background:#222; padding:15px; margin:10px 0; border-radius:10px }
+    body {
+      font-family: Arial;
+      margin:0;
+      background:#0f172a;
+      color:white;
+    }
+
+    header {
+      padding:15px;
+      background:#1e293b;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .tabs {
+      display:flex;
+      background:#111827;
+    }
+
+    .tab {
+      padding:12px;
+      cursor:pointer;
+      flex:1;
+      text-align:center;
+    }
+
+    .active {
+      background:#2563eb;
+    }
+
+    .container {
+      padding:15px;
+    }
+
+    .card {
+      background:#1e293b;
+      padding:15px;
+      margin-bottom:10px;
+      border-radius:12px;
+    }
+
+    button {
+      margin:4px;
+      padding:6px 10px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+    }
+
+    .btn-blue { background:#3b82f6; color:white }
+    .btn-red { background:#ef4444 }
+    .btn-green { background:#22c55e }
+
   </style>
 </head>
 
 <body>
 
-<h2>⚽ Uhihihaha Team Manager</h2>
+<header>
+  <div>⚽ Uhihihaha Team</div>
+  <div>
+    <span id="user"></span> | <span id="role"></span>
+  </div>
+</header>
 
-<button onclick="login()">Login Google</button>
-<p id="user"></p>
-<p id="role"></p>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('match')">⚽ Trận</div>
+  <div class="tab" onclick="switchTab('profile')">👤 Hồ sơ</div>
+  <div class="tab" onclick="switchTab('fund')">💰 Quỹ</div>
+</div>
 
-<div id="main" style="display:none">
+<div class="container">
 
-  <button onclick="createMatch()">➕ Tạo trận (Host)</button>
+  <div id="matchTab">
+    <button class="btn-blue" onclick="createMatch()">➕ Tạo trận</button>
+    <div id="matches"></div>
+  </div>
 
-  <h3>📋 Trận đấu</h3>
-  <div id="matches"></div>
+  <div id="profileTab" style="display:none">
+    <div class="card">
+      <h3>👤 Hồ sơ</h3>
+      <p id="profileInfo"></p>
+    </div>
+  </div>
+
+  <div id="fundTab" style="display:none">
+    <div class="card">
+      <h3>💰 Quỹ đội</h3>
+      <p>Đang phát triển...</p>
+    </div>
+  </div>
 
 </div>
 
@@ -45,13 +117,28 @@ const db = firebase.firestore();
 let currentUser = null;
 let currentRole = "player";
 
-// LOGIN
-function login(){
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider);
+function switchTab(tab){
+  document.getElementById("matchTab").style.display="none";
+  document.getElementById("profileTab").style.display="none";
+  document.getElementById("fundTab").style.display="none";
+
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+
+  if(tab==="match"){
+    document.getElementById("matchTab").style.display="block";
+    document.querySelectorAll(".tab")[0].classList.add("active");
+  }
+  if(tab==="profile"){
+    document.getElementById("profileTab").style.display="block";
+    document.querySelectorAll(".tab")[1].classList.add("active");
+  }
+  if(tab==="fund"){
+    document.getElementById("fundTab").style.display="block";
+    document.querySelectorAll(".tab")[2].classList.add("active");
+  }
 }
 
-// CHECK USER
+// LOGIN
 auth.onAuthStateChanged(async user => {
   if(user){
     currentUser = user;
@@ -62,19 +149,14 @@ auth.onAuthStateChanged(async user => {
     const doc = await ref.get();
 
     if(!doc.exists){
-      // tạo user mới
-      let role = "player";
-
-      if(user.email === "vytrantan1010@gmail.com"){
-        role = "admin";
-      }
+      let role = user.email === "vytrantan1010@gmail.com" ? "admin" : "player";
 
       await ref.set({
-        email: user.email,
-        name: user.displayName,
-        role: role,
-        totalMoney: 0,
-        totalMatches: 0
+        email:user.email,
+        name:user.displayName,
+        role:role,
+        totalMoney:0,
+        totalMatches:0
       });
 
       currentRole = role;
@@ -82,99 +164,83 @@ auth.onAuthStateChanged(async user => {
       currentRole = doc.data().role;
     }
 
-    document.getElementById("role").innerText = "Role: " + currentRole;
-
-    document.getElementById("main").style.display = "block";
+    document.getElementById("role").innerText = currentRole;
 
     loadMatches();
+    loadProfile();
+  } else {
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
   }
 });
 
-// TẠO TRẬN
+// CREATE MATCH
 function createMatch(){
-  if(currentRole === "player"){
-    alert("Bạn không có quyền");
+  if(currentRole==="player"){
+    alert("Không có quyền");
     return;
   }
 
   db.collection("matches").add({
     createdBy: currentUser.email,
     createdAt: new Date(),
-    status: "open",
-    players: [],
-    teamA: [],
-    teamB: [],
-    result: null
+    status:"open",
+    players:[],
+    result:null
   });
 }
 
 // LOAD MATCH
 function loadMatches(){
-  db.collection("matches").onSnapshot(snapshot => {
-    let html = "";
+  db.collection("matches").onSnapshot(snap=>{
+    let html="";
 
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const players = data.players || [];
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const players=d.players||[];
 
-      html += `
+      html+=`
         <div class="card">
-          <p>ID: ${doc.id}</p>
-
           <p>👥 ${players.length} người</p>
 
-          <button onclick="join('${doc.id}')">Đi đá</button>
-          <button onclick="leave('${doc.id}')">Nghỉ</button>
+          <button class="btn-green" onclick="join('${doc.id}')">Đi đá</button>
+          <button class="btn-red" onclick="leave('${doc.id}')">Nghỉ</button>
 
-          ${currentRole !== "player" ? `
-            <button onclick="split('${doc.id}')">Chia team</button>
+          ${currentRole!=="player"?`
             <button onclick="result('${doc.id}','A')">Đỏ thắng</button>
             <button onclick="result('${doc.id}','B')">Đen thắng</button>
             <button onclick="result('${doc.id}','draw')">Hòa</button>
-          ` : ""}
+          `:""}
 
-          <p>KQ: ${data.result || "Chưa có"}</p>
+          <p>KQ: ${d.result||"Chưa có"}</p>
         </div>
       `;
     });
 
-    document.getElementById("matches").innerHTML = html;
+    document.getElementById("matches").innerHTML=html;
   });
 }
 
-// JOIN
 function join(id){
   db.collection("matches").doc(id).update({
     players: firebase.firestore.FieldValue.arrayUnion(currentUser.email)
   });
 }
 
-// LEAVE
 function leave(id){
   db.collection("matches").doc(id).update({
     players: firebase.firestore.FieldValue.arrayRemove(currentUser.email)
   });
 }
 
-// CHIA TEAM
-function split(id){
-  db.collection("matches").doc(id).get().then(doc => {
-    let p = doc.data().players || [];
-    p.sort(()=>Math.random()-0.5);
-
-    let mid = Math.ceil(p.length/2);
-
-    db.collection("matches").doc(id).update({
-      teamA: p.slice(0,mid),
-      teamB: p.slice(mid)
-    });
-  });
+function result(id,res){
+  db.collection("matches").doc(id).update({result:res});
 }
 
-// KẾT QUẢ
-function result(id,res){
-  db.collection("matches").doc(id).update({
-    result: res
+function loadProfile(){
+  db.collection("users").doc(currentUser.email).get().then(doc=>{
+    const d=doc.data();
+    document.getElementById("profileInfo").innerText=
+      "Tên: "+d.name+"\nRole: "+d.role+"\nTổng trận: "+d.totalMatches;
   });
 }
 </script>
