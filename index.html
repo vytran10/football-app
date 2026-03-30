@@ -606,7 +606,10 @@ const FB = {
   messagingSenderId:"255192820788",
   appId:"1:255192820788:web:408e81240f26e351b3ae61"
 };
-const ADMIN_EMAIL = "vytrantan1010@gmail.com";
+const ADMIN_EMAIL    = "vytrantan1010@gmail.com";
+const LOGO_URL       = "https://drive.google.com/uc?export=view&id=1q_2NBVxzECt-Pt4A37b22_gVdXrDOgYL";
+const CDN_CLOUD      = "dn7cvccms";
+const CDN_PRESET     = "hihihahaFC";
 const PRICE = { red_win:30000, red_lose:40000, blk_win:30000, blk_lose:40000, draw:35000, penalty:40000 };
 
 const fbapp = initializeApp(FB);
@@ -670,7 +673,8 @@ onAuthStateChanged(auth, async user => {
     role = isAdmin ? 'admin' : 'player';
     await setDoc(uref, {uid:user.uid,email:user.email,name,photo:user.photoURL||'',role,createdAt:serverTimestamp()});
   }
-  me = {uid:user.uid,email:user.email,name,role};
+  const photo = usnap.exists() ? (usnap.data().photo||'') : (user.photoURL||'');
+  me = {uid:user.uid,email:user.email,name,role,photo};
   boot();
 });
 
@@ -686,8 +690,7 @@ function showScr(s) {
 function boot() {
   showScr('app');
   const L = me.name.charAt(0).toUpperCase();
-  $('nav-av').textContent = L;
-  $('pop-av').textContent = L;
+  setNavAvatar(me.photo, L);
   $('pop-name').textContent  = me.name;
   $('pop-email').textContent = me.email;
   $('pop-role').innerHTML = `<span class="rbadge ${RBC[me.role]}" style="font-size:10px;">${RBL[me.role]}</span>`;
@@ -696,6 +699,30 @@ function boot() {
   buildNav();
   const shared = new URLSearchParams(location.search).get('match');
   goPage('vote', shared);
+}
+
+/* ── AVATAR HELPERS ── */
+function setNavAvatar(photoUrl, letter) {
+  const av=$('nav-av'), pv=$('pop-av');
+  if(photoUrl){
+    const style=`width:100%;height:100%;border-radius:50%;object-fit:cover;`;
+    av.innerHTML=`<img src="${photoUrl}" style="${style}" onerror="this.parentElement.textContent='${letter}'"/>`;
+    pv.innerHTML=`<img src="${photoUrl}" style="${style}" onerror="this.parentElement.textContent='${letter}'"/>`;
+  } else {
+    av.textContent=letter;
+    pv.textContent=letter;
+  }
+}
+
+function makeAvatarHtml(photoUrl, name, cls='', size=36) {
+  const L=(name||'?').charAt(0).toUpperCase();
+  if(photoUrl){
+    return `<div class="pav ${cls}" style="width:${size}px;height:${size}px;padding:0;overflow:hidden;">
+      <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+        onerror="this.parentElement.textContent='${L}'"/>
+    </div>`;
+  }
+  return `<div class="pav ${cls}" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.38)}px;">${L}</div>`;
 }
 
 /* ── INFO POPUP ── */
@@ -1056,127 +1083,200 @@ window.removeFromMatch = async (uid,name) => {
 };
 
 /* ── EXPORT TEAM IMAGE ── */
+// Preload logo
+const _logoImg = new Image();
+_logoImg.crossOrigin='anonymous';
+_logoImg.src = LOGO_URL;
+
+// Avatar photo cache: uid -> photoUrl
+async function getAvatarPhotos(names) {
+  const usnap = await getDocs(collection(db,'users'));
+  const map={};
+  usnap.docs.forEach(d=>{
+    const u=d.data();
+    if(u.name && u.photo) map[u.name]=u.photo;
+  });
+  return map;
+}
+
+// Load image as crossOrigin
+function loadImg(url){
+  return new Promise((res)=>{
+    const img=new Image(); img.crossOrigin='anonymous';
+    img.onload=()=>res(img);
+    img.onerror=()=>res(null);
+    img.src=url;
+  });
+}
+
+// Hash name to a consistent color
+function nameColor(name){
+  const colors=['#e04848','#5cb847','#4a90d9','#f0c040','#e09030','#a855f7','#06b6d4','#ec4899'];
+  let h=0; for(let c of name) h=(h*31+c.charCodeAt(0))&0xffffffff;
+  return colors[Math.abs(h)%colors.length];
+}
+
+async function drawPlayerAvatar(ctx, photoUrl, name, x, y, r) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.clip();
+  if(photoUrl){
+    const img=await loadImg(photoUrl);
+    if(img) { ctx.drawImage(img,x-r,y-r,r*2,r*2); ctx.restore(); return; }
+  }
+  // Fallback: colored circle with letter
+  ctx.fillStyle=nameColor(name);
+  ctx.fillRect(x-r,y-r,r*2,r*2);
+  ctx.restore();
+  ctx.fillStyle='#fff';
+  ctx.font=`bold ${Math.round(r*1.1)}px -apple-system,Arial,sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(name.charAt(0).toUpperCase(),x,y+1);
+  ctx.textBaseline='alphabetic';
+}
+
 window.exportTeamImage = async () => {
   const snap=_splitSnap||(await getDoc(doc(db,'matches',splitMid)));
   if(!snap.exists()){toast('Không tìm thấy trận!','err');return;}
+  toast('🎨 Đang tạo ảnh...');
   const m=snap.data();
   const teams=m.teams||{R:[],B:[]};
   const dstr=m.dateLabel||splitMid;
   const field=m.fieldName||'Sân bóng';
   const timeStr=`${m.timeStart||'17:30'} – ${m.timeEnd||'18:30'}`;
 
+  // Load avatar photos
+  const photoMap=await getAvatarPhotos([...teams.R,...teams.B]);
+
   const cv=$('team-canvas');
-  const W=700, ROW_H=48, HEADER=130, PADDING=28, COL=320;
-  const maxRows=Math.max(teams.R.length,teams.B.length);
-  const H=HEADER+Math.max(maxRows,1)*ROW_H+PADDING*2+60;
+  const W=720, AV=22, ROW_H=52, HEADER=148, PADDING=24, COL=336;
+  const maxRows=Math.max(teams.R.length,teams.B.length,1);
+  const H=HEADER+maxRows*ROW_H+PADDING+56;
   cv.width=W; cv.height=H;
   const ctx=cv.getContext('2d');
 
-  // BG
-  ctx.fillStyle='#111612';
-  ctx.fillRect(0,0,W,H);
+  /* ─ BG ─ */
+  ctx.fillStyle='#0f1410'; ctx.fillRect(0,0,W,H);
+  // subtle texture dots
+  ctx.fillStyle='rgba(255,255,255,.015)';
+  for(let i=0;i<40;i++) ctx.fillRect(Math.random()*W,Math.random()*H,1,1);
 
-  // Top accent line
-  const grad=ctx.createLinearGradient(0,0,W,0);
-  grad.addColorStop(0,'#e04848');
-  grad.addColorStop(0.5,'#444');
-  grad.addColorStop(1,'#5cb847');
-  ctx.fillStyle=grad;
-  ctx.fillRect(0,0,W,4);
+  /* ─ top gradient bar ─ */
+  const tg=ctx.createLinearGradient(0,0,W,0);
+  tg.addColorStop(0,'#e04848'); tg.addColorStop(.5,'#2a3525'); tg.addColorStop(1,'#5cb847');
+  ctx.fillStyle=tg; ctx.fillRect(0,0,W,5);
 
-  // Header
+  /* ─ LOGO ─ */
+  const LOGO_SIZE=54;
+  const logoLoaded=_logoImg.complete&&_logoImg.naturalWidth>0;
+  const logoActual = logoLoaded ? _logoImg : await loadImg(LOGO_URL);
+  const ly=18, lx=W/2-LOGO_SIZE/2;
+  if(logoActual){
+    // circle clip
+    ctx.save();
+    ctx.beginPath(); ctx.arc(W/2,ly+LOGO_SIZE/2,LOGO_SIZE/2,0,Math.PI*2); ctx.clip();
+    ctx.drawImage(logoActual,lx,ly,LOGO_SIZE,LOGO_SIZE);
+    ctx.restore();
+    // ring
+    ctx.strokeStyle='rgba(92,184,71,.5)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(W/2,ly+LOGO_SIZE/2,LOGO_SIZE/2+2,0,Math.PI*2); ctx.stroke();
+  } else {
+    ctx.fillStyle='#5cb847'; ctx.font='bold 14px Arial';
+    ctx.textAlign='center'; ctx.fillText('⚽ UHIHIHAHA FC',W/2,ly+30);
+  }
+
+  /* ─ CLUB NAME ─ */
   ctx.fillStyle='#5cb847';
   ctx.font='bold 13px -apple-system,Arial,sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText('⚽ UHIHIHAHA FC', W/2, 32);
+  ctx.textAlign='center'; ctx.letterSpacing='2px';
+  ctx.fillText('UHIHIHAHA FC', W/2, ly+LOGO_SIZE+18);
+  ctx.letterSpacing='0px';
 
+  /* ─ MATCH INFO ─ */
   ctx.fillStyle='#dde8d8';
-  ctx.font='bold 22px -apple-system,Arial,sans-serif';
-  ctx.fillText(field, W/2, 62);
+  ctx.font='bold 18px -apple-system,Arial,sans-serif';
+  ctx.fillText(field, W/2, ly+LOGO_SIZE+38);
+  ctx.fillStyle='#5a7a54';
+  ctx.font='12px -apple-system,Arial,sans-serif';
+  ctx.fillText(`${dstr}  ·  ${timeStr}`, W/2, ly+LOGO_SIZE+56);
 
-  ctx.fillStyle='#7a9472';
-  ctx.font='13px -apple-system,Arial,sans-serif';
-  ctx.fillText(`${dstr}  ·  ${timeStr}`, W/2, 84);
+  /* ─ divider ─ */
+  ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PADDING,HEADER-8); ctx.lineTo(W-PADDING,HEADER-8); ctx.stroke();
 
-  // Divider
-  ctx.strokeStyle='rgba(255,255,255,.08)';
-  ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(PADDING,100); ctx.lineTo(W-PADDING,100); ctx.stroke();
+  /* ─ COLUMN HEADERS ─ */
+  const lx2=PADDING, rx2=W/2+PADDING/2;
 
-  // Team headers
-  const lx=PADDING, rx=W/2+PADDING/2;
-
-  // Red header
-  ctx.fillStyle='rgba(224,72,72,.18)';
-  roundRect(ctx,lx,108,COL,36,8); ctx.fill();
-  ctx.fillStyle='#ff7070';
-  ctx.font='bold 15px -apple-system,Arial,sans-serif';
+  // Red team header
+  ctx.fillStyle='rgba(224,72,72,.2)';
+  roundRect(ctx,lx2,HEADER,COL,38,8); ctx.fill();
+  ctx.strokeStyle='rgba(224,72,72,.35)'; ctx.lineWidth=1;
+  roundRect(ctx,lx2,HEADER,COL,38,8); ctx.stroke();
+  ctx.fillStyle='#ff7070'; ctx.font='bold 14px -apple-system,Arial,sans-serif';
   ctx.textAlign='left';
-  ctx.fillText(`🔴  Đội Đỏ  (${teams.R.length} người)`, lx+12, 132);
+  ctx.fillText(`🔴  Đội Đỏ  —  ${teams.R.length} người`, lx2+12, HEADER+25);
 
-  // Black header
-  ctx.fillStyle='rgba(120,120,120,.15)';
-  roundRect(ctx,rx,108,COL,36,8); ctx.fill();
-  ctx.fillStyle='#cccccc';
-  ctx.font='bold 15px -apple-system,Arial,sans-serif';
-  ctx.fillText(`⚫  Đội Đen  (${teams.B.length} người)`, rx+12, 132);
+  // Black team header
+  ctx.fillStyle='rgba(100,100,100,.15)';
+  roundRect(ctx,rx2,HEADER,COL,38,8); ctx.fill();
+  ctx.strokeStyle='rgba(120,120,120,.3)'; ctx.lineWidth=1;
+  roundRect(ctx,rx2,HEADER,COL,38,8); ctx.stroke();
+  ctx.fillStyle='#c0c0c0'; ctx.font='bold 14px -apple-system,Arial,sans-serif';
+  ctx.fillText(`⚫  Đội Đen  —  ${teams.B.length} người`, rx2+12, HEADER+25);
 
-  // Players
-  const drawPlayers=(arr,x,startY,dotColor)=>{
-    arr.forEach((name,i)=>{
-      const y=startY+i*ROW_H;
-      const even=i%2===0;
-      // Row bg
-      ctx.fillStyle=even?'rgba(255,255,255,.03)':'transparent';
-      ctx.fillRect(x,y,COL,ROW_H);
-      // Number
-      ctx.fillStyle='rgba(255,255,255,.25)';
-      ctx.font='11px -apple-system,Arial,sans-serif';
-      ctx.textAlign='left';
-      ctx.fillText(`${i+1}`, x+12, y+ROW_H/2+4);
-      // Dot
-      ctx.fillStyle=dotColor;
-      ctx.beginPath(); ctx.arc(x+34,y+ROW_H/2,5,0,Math.PI*2); ctx.fill();
-      // Name
+  /* ─ PLAYERS ─ */
+  const pY=HEADER+38+8;
+  const drawCol=async(arr,cx,teamColor)=>{
+    for(let i=0;i<arr.length;i++){
+      const name=arr[i];
+      const y=pY+i*ROW_H;
+      // alternating row bg
+      ctx.fillStyle=i%2===0?'rgba(255,255,255,.025)':'transparent';
+      ctx.fillRect(cx,y,COL,ROW_H);
+      // avatar circle
+      const avX=cx+AV+10, avY=y+ROW_H/2;
+      await drawPlayerAvatar(ctx,photoMap[name]||null,name,avX,avY,AV);
+      // name
       ctx.fillStyle='#dde8d8';
       ctx.font='bold 14px -apple-system,Arial,sans-serif';
-      ctx.fillText(name, x+48, y+ROW_H/2+5);
-    });
+      ctx.textAlign='left';
+      ctx.fillText(name,cx+AV*2+20,y+ROW_H/2+5);
+      // price tag
+      ctx.fillStyle=teamColor==='#e04848'?'rgba(224,72,72,.18)':'rgba(80,80,80,.18)';
+      roundRect(ctx,cx+COL-72,y+(ROW_H-20)/2,60,20,10); ctx.fill();
+      ctx.fillStyle=teamColor==='#e04848'?'#ff8080':'#999';
+      ctx.font='bold 11px -apple-system,Arial,sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText('30k/40k',cx+COL-42,y+ROW_H/2+4);
+    }
     if(!arr.length){
-      ctx.fillStyle='rgba(255,255,255,.2)';
-      ctx.font='italic 13px -apple-system,Arial,sans-serif';
-      ctx.fillText('(Chưa có ai)', x+12, startY+ROW_H/2+4);
+      ctx.fillStyle='rgba(255,255,255,.18)'; ctx.font='italic 13px Arial';
+      ctx.textAlign='left'; ctx.fillText('(Chưa có ai)',cx+12,pY+ROW_H/2+4);
     }
   };
+  await drawCol(teams.R,lx2,'#e04848');
+  await drawCol(teams.B,rx2,'#888');
 
-  const playersY=HEADER+48;
-  drawPlayers(teams.R,lx,playersY,'#e04848');
-  drawPlayers(teams.B,rx,playersY,'#888888');
-
-  // VS divider
-  ctx.strokeStyle='rgba(255,255,255,.06)';
-  ctx.lineWidth=1;
-  ctx.setLineDash([4,4]);
-  ctx.beginPath(); ctx.moveTo(W/2,108); ctx.lineTo(W/2,playersY+maxRows*ROW_H+10); ctx.stroke();
+  /* ─ VS center line ─ */
+  ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
+  ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(W/2,HEADER); ctx.lineTo(W/2,pY+maxRows*ROW_H); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle='rgba(255,255,255,.12)';
-  ctx.font='bold 12px -apple-system,Arial,sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText('VS', W/2, playersY+(maxRows*ROW_H)/2+5);
+  // VS badge
+  const vsY=pY+maxRows*ROW_H/2;
+  ctx.fillStyle='rgba(255,255,255,.07)';
+  ctx.beginPath(); ctx.arc(W/2,vsY,18,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font='bold 12px Arial';
+  ctx.textAlign='center'; ctx.fillText('VS',W/2,vsY+4);
 
-  // Footer
-  const fy=playersY+Math.max(maxRows,1)*ROW_H+PADDING;
-  ctx.fillStyle='rgba(255,255,255,.06)';
-  ctx.fillRect(0,fy,W,1);
-  ctx.fillStyle='#3d5438';
-  ctx.font='11px -apple-system,Arial,sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText('Uhihihaha FC Manager', W/2, fy+22);
+  /* ─ FOOTER ─ */
+  const fy2=pY+maxRows*ROW_H+16;
+  ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(0,fy2,W,1);
+  ctx.fillStyle='#2a3a26'; ctx.font='11px Arial';
+  ctx.textAlign='center'; ctx.fillText('⚽  Uhihihaha FC Manager  ⚽',W/2,fy2+22);
 
-  // Export
+  /* ─ EXPORT ─ */
   cv.toBlob(blob=>{
     const url=URL.createObjectURL(blob);
-    // Try Web Share API with file (mobile Zalo supports this)
     if(navigator.canShare&&navigator.canShare({files:[new File([blob],'doi-bong.png',{type:'image/png'})]})){
       navigator.share({
         files:[new File([blob],'doi-bong.png',{type:'image/png'})],
@@ -1186,7 +1286,7 @@ window.exportTeamImage = async () => {
     } else {
       downloadImg(url);
     }
-  },'image/png');
+  },'image/png',0.95);
 };
 
 function downloadImg(url){
@@ -1963,10 +2063,15 @@ async function loadProfile() {
   let html=`
     <div class="phero">
       <div style="position:relative;display:inline-block;margin:0 auto 12px;">
-        <div class="ph-av">${me.name.charAt(0).toUpperCase()}</div>
-        <button onclick="openNickModal()" style="position:absolute;bottom:-2px;right:-2px;
-          width:24px;height:24px;border-radius:50%;background:var(--g);border:2px solid var(--s2);
-          display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;">✏️</button>
+        ${me.photo
+          ? `<div class="ph-av" style="padding:0;overflow:hidden;">
+               <img src="${me.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                 onerror="this.outerHTML='<div class=ph-av>${me.name.charAt(0).toUpperCase()}</div>'"/>
+             </div>`
+          : `<div class="ph-av">${me.name.charAt(0).toUpperCase()}</div>`}
+        <button onclick="openAvatarUpload()" style="position:absolute;bottom:-2px;right:-2px;
+          width:26px;height:26px;border-radius:50%;background:var(--g);border:2px solid var(--s2);
+          display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;line-height:1;">📷</button>
       </div>
       <div class="ph-name">${me.name}</div>
       <div class="ph-email" style="font-size:11px;">${me.email}</div>
@@ -1975,6 +2080,9 @@ async function loadProfile() {
         <button onclick="openNickModal()" style="background:var(--s3);color:var(--t2);
           border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:11px;
           font-weight:700;cursor:pointer;font-family:inherit;">✏️ Đổi nickname</button>
+        <button onclick="openAvatarUpload()" style="background:var(--s3);color:var(--t2);
+          border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:11px;
+          font-weight:700;cursor:pointer;font-family:inherit;">📷 Đổi ảnh</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
@@ -2024,6 +2132,36 @@ async function loadProfile() {
 
   el.innerHTML=html;
 }
+
+/* ── AVATAR UPLOAD (Cloudinary) ── */
+window.openAvatarUpload = () => {
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange = async e => {
+    const file=e.target.files[0];
+    if(!file) return;
+    if(file.size>5*1024*1024){toast('Ảnh quá lớn! Tối đa 5MB','err');return;}
+    toast('📤 Đang upload ảnh...');
+    try{
+      const fd=new FormData();
+      fd.append('file',file);
+      fd.append('upload_preset',CDN_PRESET);
+      fd.append('folder','avatars');
+      fd.append('public_id','avatar_'+me.uid);
+      const res=await fetch(`https://api.cloudinary.com/v1_1/${CDN_CLOUD}/image/upload`,{method:'POST',body:fd});
+      const data=await res.json();
+      if(!data.secure_url){toast('Upload thất bại!','err');return;}
+      // Add timestamp to bust cache
+      const url=data.secure_url+'?v='+Date.now();
+      await updateDoc(doc(db,'users',me.uid),{photo:url});
+      me.photo=url;
+      setNavAvatar(url, me.name.charAt(0).toUpperCase());
+      toast('✅ Đã cập nhật ảnh đại diện!');
+      loadProfile();
+    }catch(err){toast('Lỗi upload: '+err.message,'err');}
+  };
+  inp.click();
+};
 
 /* ── NICKNAME ── */
 window.openNickModal = () => {
@@ -2104,9 +2242,11 @@ window.saveNickname = async () => {
   $('pop-av').textContent  = L;
   $('pop-name').textContent = newName;
 
+  // Refresh avatar in nav
+  setNavAvatar(me.photo, newName.charAt(0).toUpperCase());
   CM('m-nick');
   toast(`✅ Đã đổi nickname thành "${newName}"!`);
-  loadProfile(); // Reload profile to show new name
+  loadProfile();
 };
 
 /* ── HELPERS ── */
