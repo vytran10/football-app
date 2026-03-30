@@ -345,7 +345,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
 <!-- LOADING -->
 <div id="scr-load">
-  <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+  <img src="https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg"
     style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid rgba(92,184,71,.4);animation:lb .7s ease-in-out infinite alternate;"
     onerror="this.outerHTML='<div class=lb>⚽</div>'" alt=""/>
   <div class="lbar"><div class="lfill"></div></div>
@@ -358,14 +358,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
   <div class="login-glow2"></div>
   <!-- Logo watermark bg -->
   <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;">
-    <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+    <img src="https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg"
       style="width:340px;height:340px;border-radius:50%;object-fit:cover;opacity:.04;filter:blur(2px);"
       alt=""/>
   </div>
   <div class="lwrap">
     <div class="lhead">
       <div style="margin-bottom:1rem;">
-        <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+        <img src="https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg"
           style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(92,184,71,.5);box-shadow:0 4px 24px rgba(92,184,71,.2);"
           onerror="this.style.display='none'" alt="Logo HIHIHAHA FC"/>
       </div>
@@ -397,7 +397,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 <div id="scr-app">
   <nav class="nav">
     <div class="nav-l">
-      <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+      <img src="https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg"
         style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(92,184,71,.4);"
         onerror="this.style.display='none'" alt="Logo"/>
       <span class="nav-title">HIHIHAHA FC</span>
@@ -488,36 +488,63 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
 <!-- SPLIT TEAMS -->
 <div class="mo" id="m-split">
-  <div class="mb">
-    <div class="mb-handle"></div>
-    <div class="mtit">⚔️ Chia đội <button class="mclose" onclick="CM('m-split')">✕</button></div>
+  <div class="mb" style="padding:0;border-radius:var(--rxl) var(--rxl) 0 0;overflow:hidden;">
 
-    <!-- Team preview cards -->
-    <div id="split-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;"></div>
-
-    <!-- Add registered player not yet in match -->
-    <div style="background:var(--s2);border:1px solid var(--border2);border-radius:var(--rr);padding:10px 12px;margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--t2);font-weight:700;margin-bottom:7px;">👤 Thêm cầu thủ chưa bình chọn vào trận</div>
-      <div id="add-player-list" style="max-height:160px;overflow-y:auto;"></div>
-      <div id="add-player-empty" style="font-size:12px;color:var(--t3);text-align:center;padding:8px 0;display:none;">
-        Tất cả thành viên đã bình chọn tham gia ✓
+    <!-- Handle + Title -->
+    <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);">
+      <div class="mb-handle" style="margin-bottom:10px;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:16px;font-weight:800;">⚔️ Chia đội</div>
+        <button class="mclose" onclick="CM('m-split')">✕</button>
       </div>
     </div>
 
-    <!-- Player list in match -->
-    <div style="font-size:11px;color:var(--t2);font-weight:700;margin-bottom:7px;">Danh sách người tham gia trận</div>
-    <div id="split-list"></div>
-
-    <div class="brow" style="margin-top:14px;">
-      <button class="btn" style="flex:1" onclick="CM('m-split')">Đóng</button>
-      <button class="btn btn-share" style="flex:2;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportTeamImage()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-        </svg>
-        Xuất ảnh chia sẻ Zalo
-      </button>
+    <!-- Team preview: always visible, compact -->
+    <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+      <div id="split-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
     </div>
+
+    <!-- Player list: scrollable -->
+    <div style="padding:10px 14px;max-height:42vh;overflow-y:auto;">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;
+        letter-spacing:.7px;margin-bottom:8px;">Người tham gia</div>
+      <div id="split-list"></div>
+    </div>
+
+    <!-- Bottom action bar -->
+    <div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--s1);">
+
+      <!-- Add player: collapsed by default, expand on tap -->
+      <div id="add-player-wrap" style="margin-bottom:8px;">
+        <button onclick="toggleAddPanel()" style="width:100%;padding:9px 12px;background:var(--s2);
+          border:1px dashed var(--border2);border-radius:var(--rr);color:var(--t2);
+          font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+          display:flex;align-items:center;justify-content:space-between;">
+          <span>👤 Thêm cầu thủ chưa bình chọn</span>
+          <span id="add-panel-arrow" style="transition:transform .2s;">▼</span>
+        </button>
+        <div id="add-player-panel" style="display:none;background:var(--s2);border:1px solid var(--border2);
+          border-top:none;border-radius:0 0 var(--rr) var(--rr);max-height:200px;overflow-y:auto;">
+          <div id="add-player-list" style="padding:4px 0;"></div>
+          <div id="add-player-empty" style="font-size:12px;color:var(--t3);text-align:center;
+            padding:12px;display:none;">✓ Tất cả thành viên đã trong trận</div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1;padding:10px;" onclick="CM('m-split')">Đóng</button>
+        <button class="btn btn-share" style="flex:2;padding:10px;display:flex;align-items:center;
+          justify-content:center;gap:7px;" onclick="exportTeamImage()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          Xuất ảnh · Share Zalo
+        </button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -621,7 +648,7 @@ const FB = {
   appId:"1:255192820788:web:408e81240f26e351b3ae61"
 };
 const ADMIN_EMAIL    = "vytrantan1010@gmail.com";
-const LOGO_URL       = "https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg";
+const LOGO_URL       = "https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg";
 const CDN_CLOUD      = "dn7cvccms";
 const CDN_PRESET     = "hihihahaFC";
 const PRICE = { red_win:30000, red_lose:40000, blk_win:30000, blk_lose:40000, draw:35000, penalty:40000 };
@@ -656,9 +683,13 @@ window.CM = id => $(id).classList.remove('op');
 const can = a => {
   if (!me) return false;
   const r = me.role;
-  const hostOps = ['createMatch','lockVote','setResult','splitTeams','markPay','viewManage','manageDebt','editFund','viewFund','penalize'];
-  const adminOps = ['manageTeam','editPaymentStatus'];
-  if (adminOps.includes(a)) return r === 'admin';
+  // admin-only: assign roles
+  if (a === 'manageTeam') return r === 'admin';
+  if (a === 'editPaymentStatus') return r === 'admin';
+  // host + admin: management actions
+  const hostOps = ['createMatch','lockVote','setResult','splitTeams','markPay',
+    'viewManage','manageDebt','editFund','viewFund','penalize',
+    'viewTeam','lockAccount','warnPlayer'];
   if (hostOps.includes(a)) return r === 'admin' || r === 'host';
   return true;
 };
@@ -757,7 +788,7 @@ function buildNav() {
     {id:'vote',   lbl:'Trận đấu', svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20"/><path d="M2 12h20"/></svg>'},
     ...(can('viewManage')?[{id:'manage', lbl:'Quản lý', svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>'}]:[]),
     ...(can('viewFund')  ?[{id:'fund',   lbl:'Quỹ',    svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="15" r="2"/></svg>'}]:[]),
-    ...(can('manageTeam')?[{id:'team',   lbl:'Đội bóng',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'}]:[]),
+    ...(can('viewTeam')?[{id:'team',   lbl:'Đội bóng',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'}]:[]),
     {id:'profile',lbl:'Hồ sơ',   svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
   ];
   $('bnav').innerHTML = items.map(it=>`
@@ -2248,6 +2279,15 @@ async function loadProfile() {
 
   el.innerHTML=html;
 }
+
+/* ── ADD PLAYER PANEL TOGGLE ── */
+window.toggleAddPanel = () => {
+  const panel = $('add-player-panel');
+  const arrow = $('add-panel-arrow');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+};
 
 /* ── AVATAR UPLOAD (Cloudinary) ── */
 window.openAvatarUpload = () => {
