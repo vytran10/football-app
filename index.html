@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>Uhihihaha FC ⚽</title>
+<title>HIHIHAHA FC ⚽</title>
 <style>
 :root{
   --bg:#0a0d0b;
@@ -345,19 +345,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
 <!-- LOADING -->
 <div id="scr-load">
-  <div class="lb">⚽</div>
+  <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+    style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid rgba(92,184,71,.4);animation:lb .7s ease-in-out infinite alternate;"
+    onerror="this.outerHTML='<div class=lb>⚽</div>'" alt=""/>
   <div class="lbar"><div class="lfill"></div></div>
-  <div class="ltxt">Uhihihaha FC đang khởi động...</div>
+  <div class="ltxt">HIHIHAHA FC đang khởi động...</div>
 </div>
 
 <!-- LOGIN -->
 <div id="scr-login" style="display:flex;">
   <div class="login-glow"></div>
   <div class="login-glow2"></div>
+  <!-- Logo watermark bg -->
+  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;">
+    <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+      style="width:340px;height:340px;border-radius:50%;object-fit:cover;opacity:.04;filter:blur(2px);"
+      alt=""/>
+  </div>
   <div class="lwrap">
     <div class="lhead">
-      <div class="lbadge">⚽ FC MANAGER</div>
-      <div class="lname">Uhihihaha</div>
+      <div style="margin-bottom:1rem;">
+        <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+          style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(92,184,71,.5);box-shadow:0 4px 24px rgba(92,184,71,.2);"
+          onerror="this.style.display='none'" alt="Logo HIHIHAHA FC"/>
+      </div>
+      <div class="lname">HIHIHAHA FC</div>
       <div class="lsub">Quản lý đội bóng · Minh bạch · Dễ dùng</div>
     </div>
     <div class="lcard">
@@ -385,8 +397,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 <div id="scr-app">
   <nav class="nav">
     <div class="nav-l">
-      <span class="nav-logo">⚽</span>
-      <span class="nav-title">Uhihihaha</span>
+      <img src="https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg"
+        style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(92,184,71,.4);"
+        onerror="this.style.display='none'" alt="Logo"/>
+      <span class="nav-title">HIHIHAHA FC</span>
     </div>
     <div class="nav-r">
       <span id="rbadge" class="rbadge rb-p">Cầu thủ</span>
@@ -607,7 +621,7 @@ const FB = {
   appId:"1:255192820788:web:408e81240f26e351b3ae61"
 };
 const ADMIN_EMAIL    = "vytrantan1010@gmail.com";
-const LOGO_URL = "https://raw.githubusercontent.com/vytran10/football-app/main/logohihihaha.jpg";
+const LOGO_URL       = "https://raw.githubusercontent.com/vytran10/football-app/main/assets/logohihihaha.jpg";
 const CDN_CLOUD      = "dn7cvccms";
 const CDN_PRESET     = "hihihahaFC";
 const PRICE = { red_win:30000, red_lose:40000, blk_win:30000, blk_lose:40000, draw:35000, penalty:40000 };
@@ -622,7 +636,8 @@ let me = null;
 
 /* ── UTILS ── */
 const $  = id => document.getElementById(id);
-const fM = n => n>=1e6?(n/1e6).toFixed(1).replace('.0','')+'M':n>=1000?Math.round(n/1000)+'k':n.toLocaleString('vi-VN')+'đ';
+const fM     = n => n>=1e6?(n/1e6).toFixed(1).replace('.0','')+'M':n>=1000?Math.round(n/1000)+'k':n.toLocaleString('vi-VN')+'đ';
+const fMExact = n => (n||0).toLocaleString('vi-VN')+'đ'; // exact, no rounding — for fund
 const spin = () => `<div class="empty"><div style="font-size:30px;animation:lb .7s ease-in-out infinite alternate;">⚽</div></div>`;
 const RBL = {admin:'Admin 👑', host:'Host 🏅', player:'Cầu thủ'};
 const RBC = {admin:'rb-a', host:'rb-h', player:'rb-p'};
@@ -671,10 +686,11 @@ onAuthStateChanged(auth, async user => {
     name = d.name || name;
   } else {
     role = isAdmin ? 'admin' : 'player';
-    await setDoc(uref, {uid:user.uid,email:user.email,name,photo:user.photoURL||'',role,createdAt:serverTimestamp()});
+    await setDoc(uref, {uid:user.uid,email:user.email,name,photo:user.photoURL||'',role,approved:user.email===ADMIN_EMAIL,createdAt:serverTimestamp()});
   }
   const photo = usnap.exists() ? (usnap.data().photo||'') : (user.photoURL||'');
-  me = {uid:user.uid,email:user.email,name,role,photo};
+  const approved = user.email===ADMIN_EMAIL ? true : (usnap.exists() ? (usnap.data().approved!==false) : false);
+  me = {uid:user.uid,email:user.email,name,role,photo,approved};
   boot();
 });
 
@@ -768,6 +784,26 @@ window.goPage = function(p, extra) {
 ══════════════════════════════════════════ */
 async function loadVote(hid) {
   const el=$('pg-vote'); el.innerHTML=spin();
+
+  // Check if player is approved/unlocked
+  if(!can('lockVote') && me.approved===false) {
+    el.innerHTML=`<div style="margin:2rem 1rem;">
+      <div style="background:linear-gradient(135deg,rgba(224,72,72,.15),rgba(224,72,72,.05));
+        border:1px solid rgba(224,72,72,.3);border-radius:var(--rl);padding:2rem;text-align:center;">
+        <div style="font-size:52px;margin-bottom:14px;">🦵</div>
+        <div style="font-size:18px;font-weight:800;color:var(--r);margin-bottom:8px;">Tài khoản đang bị treo giò!</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px;">
+          Tài khoản của bạn chưa được mở khóa.<br/>
+          Nhắn tin cho <strong style="color:var(--text)">Host</strong> để được kích hoạt tham gia đội nhé!
+        </div>
+        <div style="background:var(--s2);border-radius:var(--rm);padding:12px;font-size:12px;color:var(--t3);">
+          Email của bạn: <strong style="color:var(--text)">${me.email}</strong>
+        </div>
+      </div>
+    </div>`;
+    return;
+  }
+
   const snap = await getDocs(collection(db,'matches'));
   const active = snap.docs.map(d=>({id:d.id,...d.data()}))
     .filter(m=>m.status!=='done')
@@ -903,8 +939,8 @@ window.confirmCancel = mid => showConfirm('🗑️ Hủy trận này?','Thao tá
 /* share */
 window.shareMatch = (mid, dstr) => {
   const url=`${location.origin}${location.pathname}?match=${mid}`;
-  const msg=`⚽ Uhihihaha FC — Bình chọn trận ${dstr}\nĐăng nhập & bình chọn tại:\n${url}`;
-  if(navigator.share) navigator.share({title:'Uhihihaha FC',text:msg,url}).catch(()=>copyFb(msg));
+  const msg=`⚽ HIHIHAHA FC — Bình chọn trận ${dstr}\nĐăng nhập & bình chọn tại:\n${url}`;
+  if(navigator.share) navigator.share({title:'HIHIHAHA FC',text:msg,url}).catch(()=>copyFb(msg));
   else copyFb(msg);
 };
 function copyFb(msg){
@@ -1181,14 +1217,14 @@ window.exportTeamImage = async () => {
     ctx.beginPath(); ctx.arc(W/2,ly+LOGO_SIZE/2,LOGO_SIZE/2+2,0,Math.PI*2); ctx.stroke();
   } else {
     ctx.fillStyle='#5cb847'; ctx.font='bold 14px Arial';
-    ctx.textAlign='center'; ctx.fillText('⚽ UHIHIHAHA FC',W/2,ly+30);
+    ctx.textAlign='center'; ctx.fillText('⚽ HIHIHAHA FC',W/2,ly+30);
   }
 
   /* ─ CLUB NAME ─ */
   ctx.fillStyle='#5cb847';
   ctx.font='bold 13px -apple-system,Arial,sans-serif';
   ctx.textAlign='center'; ctx.letterSpacing='2px';
-  ctx.fillText('UHIHIHAHA FC', W/2, ly+LOGO_SIZE+18);
+  ctx.fillText('HIHIHAHA FC', W/2, ly+LOGO_SIZE+18);
   ctx.letterSpacing='0px';
 
   /* ─ MATCH INFO ─ */
@@ -1272,7 +1308,7 @@ window.exportTeamImage = async () => {
   const fy2=pY+maxRows*ROW_H+16;
   ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(0,fy2,W,1);
   ctx.fillStyle='#2a3a26'; ctx.font='11px Arial';
-  ctx.textAlign='center'; ctx.fillText('⚽  Uhihihaha FC Manager  ⚽',W/2,fy2+22);
+  ctx.textAlign='center'; ctx.fillText('⚽  HIHIHAHA FC Manager  ⚽',W/2,fy2+22);
 
   /* ─ EXPORT ─ */
   cv.toBlob(blob=>{
@@ -1280,7 +1316,7 @@ window.exportTeamImage = async () => {
     if(navigator.canShare&&navigator.canShare({files:[new File([blob],'doi-bong.png',{type:'image/png'})]})){
       navigator.share({
         files:[new File([blob],'doi-bong.png',{type:'image/png'})],
-        title:'Uhihihaha FC — Chia đội',
+        title:'HIHIHAHA FC — Chia đội',
         text:`${field} · ${dstr}`
       }).catch(()=>downloadImg(url));
     } else {
@@ -1679,19 +1715,19 @@ function renderFundShell() {
     <!-- HERO BALANCE -->
     <div class="card" style="background:linear-gradient(150deg,var(--s2),rgba(92,184,71,.06));border-color:rgba(92,184,71,.2);margin-bottom:10px;">
       <div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:700;">Số dư quỹ đội</div>
-      <div style="font-size:42px;font-weight:900;color:var(--g);letter-spacing:-2px;line-height:1;">${fM(balance)}</div>
+      <div style="font-size:42px;font-weight:900;color:var(--g);letter-spacing:-2px;line-height:1;">${fMExact(balance)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px;">
         <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
           <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Đã thu từ trận</div>
-          <div style="font-size:16px;font-weight:800;color:var(--bl);">${fM(matchCollected)}</div>
+          <div style="font-size:16px;font-weight:800;color:var(--bl);">${fMExact(matchCollected)}</div>
         </div>
         <div style="background:${matchPending>0?'rgba(224,72,72,.1)':'var(--s3)'};border-radius:var(--rr);padding:10px;text-align:center;">
           <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Chưa thu</div>
-          <div style="font-size:16px;font-weight:800;color:${matchPending>0?'var(--r)':'var(--g)'};">${matchPending>0?fM(matchPending):'✓ Hết'}</div>
+          <div style="font-size:16px;font-weight:800;color:${matchPending>0?'var(--r)':'var(--g)'};">${matchPending>0?fMExact(matchPending):'✓ Hết'}</div>
         </div>
         <div style="background:var(--s3);border-radius:var(--rr);padding:10px;text-align:center;">
           <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">Tổng cần thu</div>
-          <div style="font-size:16px;font-weight:800;">${fM(matchTotal)}</div>
+          <div style="font-size:16px;font-weight:800;">${fMExact(matchTotal)}</div>
         </div>
       </div>
     </div>
@@ -1740,7 +1776,7 @@ function renderFundBody(balance,matchCollected,matchPending) {
             <div class="pn">${t.note||'Giao dịch'}${t.field?` · ${t.field}`:''}</div>
             <div class="pd">${t.by||''} · ${t.date||''}</div>
           </div>
-          <div style="font-size:13px;font-weight:800;color:${clr};">${isIn?'+':'-'}${fM(t.amt)}</div>
+          <div style="font-size:13px;font-weight:800;color:${clr};">${isIn?'+':'-'}${fMExact(t.amt)}</div>
         </div>`;
       });
       html+=`</div>`;
@@ -1761,7 +1797,7 @@ function renderFundBody(balance,matchCollected,matchPending) {
       });
       Object.entries(groups).forEach(([month,items])=>{
         const monthTotal=items.reduce((s,t)=>(t.type==='add'||t.type==='match_in'?s+t.amt:s-t.amt),0);
-        html+=`<div class="sh" style="margin-top:14px;">${month} <span style="font-weight:700;color:${monthTotal>=0?'var(--g)':'var(--r)'};">${monthTotal>=0?'+':''}${fM(monthTotal)}</span></div>
+        html+=`<div class="sh" style="margin-top:14px;">${month} <span style="font-weight:700;color:${monthTotal>=0?'var(--g)':'var(--r)'};">${monthTotal>=0?'+':''}${fMExact(monthTotal)}</span></div>
           <div class="card">`;
         items.forEach((t,idx)=>{
           const isIn=t.type==='add'||t.type==='match_in';
@@ -1775,7 +1811,7 @@ function renderFundBody(balance,matchCollected,matchPending) {
               <div class="pd">${t.by||''} · ${t.date||''} · ${t.type==='match_in'?'Thu từ trận':t.type==='add'?'Nạp thủ công':'Rút thủ công'}</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:13px;font-weight:800;color:${clr};">${isIn?'+':'-'}${fM(t.amt)}</div>
+              <div style="font-size:13px;font-weight:800;color:${clr};">${isIn?'+':'-'}${fMExact(t.amt)}</div>
               ${t._manual&&can('editFund')?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;">
                 <button class="btn btn-sm" style="padding:3px 8px;font-size:10px;" onclick="editTx(${idx},'${t.type}',${t.amt},'${(t.note||'').replace(/'/g,"\'")}')">✏️</button>
                 <button class="btn btn-sm btn-r" style="padding:3px 8px;font-size:10px;" onclick="deleteTx(${idx})">🗑️</button>
@@ -1835,7 +1871,7 @@ window.submitFund = async () => {
   const newTxs=[...(fund.txs||[]),tx];
   await setDoc(ref,{...fund,txs:newTxs});
   $('f-amt').value=$('f-note').value='';
-  toast(`✅ Đã thêm giao dịch ${type==='add'?'nạp':'rút'} ${fM(amt)}!`);
+  toast(`✅ Đã thêm giao dịch ${type==='add'?'nạp':'rút'} ${fMExact(amt)}!`);
   await refreshFundCache(); renderFundShell();
 };
 
@@ -1850,7 +1886,7 @@ window.editTx = (idx, type, amt, note) => {
   if(origIdx===-1){toast('Không tìm thấy giao dịch','err');return;}
   showConfirm(
     `✏️ Sửa giao dịch`,
-    `"${note}" — ${fM(amt)}
+    `"${note}" — ${fMExact(amt)}
 
 Nhập số tiền và ghi chú mới trong form Điều chỉnh.`,
     'Mở Điều chỉnh','btn-p',()=>{
@@ -1911,7 +1947,7 @@ window.overrideFund = async () => {
   const note=($('f-override-note')?.value||'').trim()||'Admin hiệu chỉnh số dư';
   showConfirm(
     '⚙️ Đặt lại số dư quỹ?',
-    `Số dư mới sẽ là ${fM(val)}. Một giao dịch hiệu chỉnh sẽ được ghi lại.`,
+    `Số dư mới sẽ là ${fMExact(val)}. Một giao dịch hiệu chỉnh sẽ được ghi lại.`,
     'Đặt lại','btn-gold',
     async()=>{
       const ref=doc(db,'fund','main'), snap=await getDoc(ref);
@@ -1920,7 +1956,7 @@ window.overrideFund = async () => {
       const diff=val-balance;
       const tx={type:diff>=0?'add':'sub',amt:Math.abs(diff),note,by:me.name,date:new Date().toLocaleDateString('vi-VN'),ts:Date.now()/1000|0,isOverride:true};
       await setDoc(ref,{...fund,txs:[...(fund.txs||[]),tx]});
-      toast(`✅ Đã hiệu chỉnh số dư thành ${fM(val)}!`);
+      toast(`✅ Đã hiệu chỉnh số dư thành ${fMExact(val)}!`);
       await refreshFundCache(); renderFundShell();
     }
   );
@@ -1932,12 +1968,37 @@ window.overrideFund = async () => {
 async function loadTeam() {
   const el=$('pg-team'); el.innerHTML=spin();
   const [uSnap,mSnap]=await Promise.all([getDocs(collection(db,'users')),getDocs(collection(db,'matches'))]);
-  const users=uSnap.docs.map(d=>d.data());
-  const matches=mSnap.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m.status==='done');
+  const users=uSnap.docs.map(d=>({uid:d.id,...d.data()}));
+  const allMatches=mSnap.docs.map(d=>({id:d.id,...d.data()}));
+  const doneM=allMatches.filter(m=>m.status==='done');
+  // recent matches sorted by createdAt desc for streak calc
+  const recentM=allMatches.filter(m=>m.status==='done'||m.status==='open')
+    .sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
   const stats={};
-  users.forEach(u=>{stats[u.uid]={name:u.name,email:u.email,role:u.role||'player',played:0,wins:0,losses:0,draws:0,owed:0};});
-  matches.forEach(m=>{
+  users.forEach(u=>{
+    stats[u.uid]={
+      name:u.name,email:u.email,role:u.role||'player',
+      approved:u.approved!==false, warning:u.warning||false,
+      warningMsg:u.warningMsg||'',
+      played:0,wins:0,losses:0,draws:0,owed:0,
+      noVoteStreak:0 // consecutive matches with no 'in' vote
+    };
+  });
+
+  // Compute no-vote streak (consecutive recent matches where player didn't vote 'in')
+  // Go through recentM in order and find max consecutive non-in votes
+  users.forEach(u=>{
+    let streak=0;
+    for(const m of recentM){
+      const v=(m.votes||{})[u.uid];
+      if(v!=='in') streak++;
+      else break; // reset on first 'in'
+    }
+    if(stats[u.uid]) stats[u.uid].noVoteStreak=streak;
+  });
+
+  doneM.forEach(m=>{
     const votes=m.votes||{};
     Object.entries(votes).filter(([,v])=>v==='in').forEach(([uid])=>{
       if(!stats[uid])return;
@@ -1955,60 +2016,68 @@ async function loadTeam() {
 
   const totalOwed=Object.values(stats).reduce((s,u)=>s+u.owed,0);
   const debtors=Object.values(stats).filter(u=>u.owed>0).length;
+  const locked_count=Object.values(stats).filter(u=>!u.approved).length;
 
   let html=`
     <div class="sg">
       <div class="sc"><div class="sl">Thành viên</div><div class="sv" style="color:var(--bl)">${users.length}</div></div>
-      <div class="sc"><div class="sl">Nợ tiền</div><div class="sv" style="color:var(--r)">${debtors}</div></div>
-      <div class="sc"><div class="sl">Tổng nợ</div><div class="sv" style="color:var(--r)">${fM(totalOwed)}</div></div>
-    </div>
-    <div class="sh">👥 Thành viên đội</div>`;
+      <div class="sc"><div class="sl">Bị khóa</div><div class="sv" style="color:var(--r)">${locked_count}</div></div>
+      <div class="sc"><div class="sl">Nợ tiền</div><div class="sv" style="color:var(--am)">${debtors}</div></div>
+    </div>`;
 
-  // Deduplicate users by uid (safety)
   const seenUids=new Set();
-  const uniqueEntries=Object.entries(stats).filter(([uid])=>{if(seenUids.has(uid))return false;seenUids.add(uid);return true;});
-  uniqueEntries.sort((a,b)=>{
+  const entries=Object.entries(stats).filter(([uid])=>{if(seenUids.has(uid))return false;seenUids.add(uid);return true;});
+  // Sort: locked first (red), then by role, then by debt
+  entries.sort((a,b)=>{
+    const al=!a[1].approved?0:1, bl=!b[1].approved?0:1;
+    if(al!==bl)return al-bl;
     const ro={admin:0,host:1,player:2};
     if(ro[a[1].role]!==ro[b[1].role])return ro[a[1].role]-ro[b[1].role];
     return b[1].owed-a[1].owed;
   });
 
-  html+=`<div class="card" style="padding:4px 0;">`;
-  uniqueEntries.forEach(([uid,s])=>{
+  html+=`<div class="sh">👥 Danh sách thành viên</div><div class="card" style="padding:0;">`;
+  entries.forEach(([uid,s])=>{
     const isOwner=s.email===ADMIN_EMAIL;
-    const avCls=s.owed>0?'av-r':s.role==='admin'?'av-gold':s.role==='host'?'av-g':'av-b';
+    const isLocked=!s.approved;
+    const hasWarn=s.warning;
+    const streakBad=s.noVoteStreak>=3;
+    // Color: locked=red border, warned=amber, normal
+    const rowBg=isLocked?'background:rgba(224,72,72,.06);':'';
+    const nameColor=isLocked?'color:var(--r);':hasWarn?'color:var(--am);':'';
+    const avCls=isLocked?'av-r':s.role==='admin'?'av-gold':s.role==='host'?'av-g':'av-b';
     const roleLbl={admin:'Admin 👑',host:'Host 🏅',player:'Cầu thủ'}[s.role]||'Cầu thủ';
-    html+=`<div class="prow" style="align-items:flex-start;padding:12px 14px;">
-      <div class="pav ${avCls}" style="width:40px;height:40px;font-size:14px;flex-shrink:0;margin-top:2px;">
-        ${(s.name||'?').charAt(0).toUpperCase()}
-      </div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
-          <span style="font-size:13px;font-weight:700;">${s.name}</span>
-          <span class="rbadge ${s.role==='admin'?'rb-a':s.role==='host'?'rb-h':'rb-p'}" style="font-size:10px;">${roleLbl}</span>
-          ${s.owed>0?`<span class="pill pl-no">${fM(s.owed)}</span>`:'<span class="pill pl-ok">Sạch ✓</span>'}
+    html+=`<div style="border-bottom:1px solid var(--border);${rowBg}padding:11px 14px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="pav ${avCls}" style="width:38px;height:38px;font-size:13px;flex-shrink:0;">
+          ${(s.name||'?').charAt(0).toUpperCase()}
         </div>
-        <div style="font-size:10px;color:var(--t3);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.email}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:220px;">
-          <div style="background:var(--s3);border-radius:6px;padding:5px;text-align:center;">
-            <div style="font-size:14px;font-weight:800;">${s.played}</div>
-            <div style="font-size:9px;color:var(--t3);">Trận</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:700;${nameColor}">${s.name}</span>
+            ${isLocked?'<span style="font-size:10px;background:var(--rbg);color:var(--r);padding:1px 7px;border-radius:20px;font-weight:700;">🔒 Bị khóa</span>':''}
+            ${hasWarn?'<span style="font-size:10px;background:var(--ambg);color:var(--am);padding:1px 7px;border-radius:20px;font-weight:700;">⚠️ Cảnh cáo</span>':''}
+            ${streakBad&&!isLocked?`<span style="font-size:10px;background:rgba(224,144,48,.1);color:var(--am);padding:1px 7px;border-radius:20px;font-weight:700;">😴 ${s.noVoteStreak} trận im lặng</span>`:''}
           </div>
-          <div style="background:var(--gbg);border-radius:6px;padding:5px;text-align:center;">
-            <div style="font-size:14px;font-weight:800;color:var(--g);">${s.wins}</div>
-            <div style="font-size:9px;color:var(--t3);">Thắng</div>
-          </div>
-          <div style="background:var(--rbg);border-radius:6px;padding:5px;text-align:center;">
-            <div style="font-size:14px;font-weight:800;color:var(--r);">${s.losses}</div>
-            <div style="font-size:9px;color:var(--t3);">Thua</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.email}</div>
+          <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;align-items:center;">
+            <span class="rbadge ${s.role==='admin'?'rb-a':s.role==='host'?'rb-h':'rb-p'}" style="font-size:9px;">${roleLbl}</span>
+            <span style="font-size:11px;color:var(--t2);">${s.played}⚽ ${s.wins}W ${s.losses}L</span>
+            ${s.owed>0?`<span class="pill pl-no" style="font-size:10px;">${fM(s.owed)}</span>`:'<span class="pill pl-ok" style="font-size:10px;">Sạch ✓</span>'}
           </div>
         </div>
       </div>
-      ${isOwner?'':`<select class="fi" style="padding:5px 8px;font-size:11px;width:90px;flex-shrink:0;margin-top:2px;" onchange="setRole('${uid}',this.value)">
-        <option value="player" ${s.role==='player'?'selected':''}>Cầu thủ</option>
-        <option value="host"   ${s.role==='host'?'selected':''}>Host</option>
-        <option value="admin"  ${s.role==='admin'?'selected':''}>Admin</option>
-      </select>`}
+      ${isOwner?'':`<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;">
+        ${isLocked
+          ?`<button class="btn btn-sm btn-g" onclick="unlockAccount('${uid}','${s.name.replace(/'/g,"\'")}')">🔓 Mở khóa</button>`
+          :`<button class="btn btn-sm btn-r" onclick="lockAccount('${uid}','${s.name.replace(/'/g,"\'")}')">🔒 Khóa</button>`}
+        <button class="btn btn-sm btn-a" onclick="warnPlayer('${uid}','${s.name.replace(/'/g,"\'")}')">⚠️ Cảnh cáo</button>
+        <select class="fi" style="padding:4px 7px;font-size:11px;width:86px;" onchange="setRole('${uid}',this.value)">
+          <option value="player" ${s.role==='player'?'selected':''}>Cầu thủ</option>
+          <option value="host"   ${s.role==='host'?'selected':''}>Host</option>
+          <option value="admin"  ${s.role==='admin'?'selected':''}>Admin</option>
+        </select>
+      </div>`}
     </div>`;
   });
   html+=`</div>`;
@@ -2019,6 +2088,36 @@ window.setRole = async (uid,role) => {
     await updateDoc(doc(db,'users',uid),{role});
     toast('✅ Đã cập nhật quyền!'); loadTeam();
   });
+};
+
+window.lockAccount = (uid,name) => showConfirm(
+  `🔒 Khóa tài khoản ${name}?`,
+  `${name} sẽ không thể bình chọn và xem trận đấu cho đến khi được mở khóa.`,
+  'Khóa tài khoản','btn-r',
+  async()=>{ await updateDoc(doc(db,'users',uid),{approved:false}); toast(`🔒 Đã khóa ${name}!`); loadTeam(); }
+);
+
+window.unlockAccount = (uid,name) => showConfirm(
+  `🔓 Mở khóa ${name}?`,
+  `${name} sẽ được phép tham gia bình chọn và xem trận đấu.`,
+  'Mở khóa','btn-g',
+  async()=>{ await updateDoc(doc(db,'users',uid),{approved:true}); toast(`✅ Đã mở khóa ${name}!`); loadTeam(); }
+);
+
+window.warnPlayer = async (uid,name) => {
+  showConfirm(
+    `⚠️ Cảnh cáo ${name}?`,
+    `${name} sẽ nhận thông báo nhắc nhở bình chọn đều hơn trên hồ sơ cá nhân.`,
+    'Gửi cảnh cáo','btn-a',
+    async()=>{
+      await updateDoc(doc(db,'users',uid),{
+        warning:true,
+        warningMsg:`⚠️ Bạn bị cảnh cáo vì không bình chọn đều. Hãy cố gắng đăng ký đá đều hơn nhé!`,
+        warningAt:Date.now()
+      });
+      toast(`⚠️ Đã gửi cảnh cáo đến ${name}!`); loadTeam();
+    }
+  );
 };
 
 /* ══════════════════════════════════════════
@@ -2060,7 +2159,24 @@ async function loadProfile() {
   const pts=wins*3+draws;
   const wr=played>0?Math.round(wins/played*100):0;
 
-  let html=`
+  // Check warning from Firestore
+  const usnap2=await getDoc(doc(db,'users',me.uid));
+  const udata=usnap2.exists()?usnap2.data():{};
+  const hasWarning=udata.warning===true;
+  const warningMsg=udata.warningMsg||'Bạn bị cảnh cáo vì không bình chọn đều. Hãy cố gắng tham gia đều hơn!';
+
+  let html=``;
+
+  if(hasWarning){
+    html+=`<div style="background:linear-gradient(135deg,rgba(224,144,48,.15),rgba(224,144,48,.05));
+      border:1px solid rgba(224,144,48,.3);border-radius:var(--rl);padding:1.25rem;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:800;color:var(--am);margin-bottom:6px;">⚠️ Thông báo từ Host</div>
+      <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px;">${warningMsg}</div>
+      <button class="btn btn-g btn-full" onclick="dismissWarning()">💪 Tôi sẽ cố gắng đá đều hơn!</button>
+    </div>`;
+  }
+
+  html+=`
     <div class="phero">
       <div style="position:relative;display:inline-block;margin:0 auto 12px;">
         ${me.photo
@@ -2161,6 +2277,13 @@ window.openAvatarUpload = () => {
     }catch(err){toast('Lỗi upload: '+err.message,'err');}
   };
   inp.click();
+};
+
+/* ── WARNING DISMISS ── */
+window.dismissWarning = async () => {
+  await updateDoc(doc(db,'users',me.uid),{warning:false,warningMsg:''});
+  toast('💪 Cảm ơn! Thông báo đã được xóa.');
+  loadProfile();
 };
 
 /* ── NICKNAME ── */
