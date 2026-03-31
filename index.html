@@ -367,7 +367,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
       <div style="margin-bottom:1rem;">
         <img src="https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg"
           style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(92,184,71,.5);box-shadow:0 4px 24px rgba(92,184,71,.2);"
-          onerror="this.style.display='none'" alt="Logo HIHIHAHA FC"/>
+          onerror="this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234a8a35'/%3E%3Cstop offset='1' stop-color='%232d5a1f'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%235cb847'/%3E%3Cstop offset='1' stop-color='%233d8a2d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M50 5 L90 20 L90 60 Q90 90 50 105 Q10 90 10 60 L10 20 Z' fill='url(%23g1)' stroke='%23f0c040' stroke-width='2.5'/%3E%3Cpath d='M50 15 L80 27 L80 60 Q80 83 50 95 Q20 83 20 60 L20 27 Z' fill='url(%23g2)' opacity='.7'/%3E%3Ccircle cx='50' cy='52' r='18' fill='none' stroke='%23fff' stroke-width='1.5' opacity='.9'/%3E%3Ccircle cx='50' cy='52' r='4' fill='%23fff' opacity='.9'/%3E%3Cpath d='M50 34 L50 70 M32 52 L68 52' stroke='%23fff' stroke-width='1.5' opacity='.6'/%3E%3Ctext x='50' y='27' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='7' font-weight='900' fill='%23f0c040' letter-spacing='1'%3EHIHIHAHA%3C/text%3E%3Ctext x='50' y='88' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='6' font-weight='900' fill='%23f0c040' letter-spacing='1'%3EFC%3C/text%3E%3C/svg%3E'" alt="HIHIHAHA FC"/>
       </div>
       <div class="lname">HIHIHAHA FC</div>
       <div class="lsub">Quản lý đội bóng · Minh bạch · Dễ dùng</div>
@@ -399,7 +399,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
     <div class="nav-l">
       <img src="https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg"
         style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(92,184,71,.4);"
-        onerror="this.style.display='none'" alt="Logo"/>
+        onerror="this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234a8a35'/%3E%3Cstop offset='1' stop-color='%232d5a1f'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%235cb847'/%3E%3Cstop offset='1' stop-color='%233d8a2d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M50 5 L90 20 L90 60 Q90 90 50 105 Q10 90 10 60 L10 20 Z' fill='url(%23g1)' stroke='%23f0c040' stroke-width='2.5'/%3E%3Cpath d='M50 15 L80 27 L80 60 Q80 83 50 95 Q20 83 20 60 L20 27 Z' fill='url(%23g2)' opacity='.7'/%3E%3Ccircle cx='50' cy='52' r='18' fill='none' stroke='%23fff' stroke-width='1.5' opacity='.9'/%3E%3Ccircle cx='50' cy='52' r='4' fill='%23fff' opacity='.9'/%3E%3Cpath d='M50 34 L50 70 M32 52 L68 52' stroke='%23fff' stroke-width='1.5' opacity='.6'/%3E%3Ctext x='50' y='27' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='7' font-weight='900' fill='%23f0c040' letter-spacing='1'%3EHIHIHAHA%3C/text%3E%3Ctext x='50' y='88' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='6' font-weight='900' fill='%23f0c040' letter-spacing='1'%3EFC%3C/text%3E%3C/svg%3E'" alt="HIHIHAHA FC"/>
       <span class="nav-title">HIHIHAHA FC</span>
     </div>
     <div class="nav-r">
@@ -649,6 +649,7 @@ const FB = {
 };
 const ADMIN_EMAIL    = "vytrantan1010@gmail.com";
 const LOGO_URL       = "https://cdn.jsdelivr.net/gh/vytran10/football-app@main/assets/logohihihaha.jpg";
+const LOGO_FALLBACK  = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234a8a35'/%3E%3Cstop offset='1' stop-color='%232d5a1f'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%235cb847'/%3E%3Cstop offset='1' stop-color='%233d8a2d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M50 5 L90 20 L90 60 Q90 90 50 105 Q10 90 10 60 L10 20 Z' fill='url(%23g1)' stroke='%23f0c040' stroke-width='2.5'/%3E%3Cpath d='M50 15 L80 27 L80 60 Q80 83 50 95 Q20 83 20 60 L20 27 Z' fill='url(%23g2)' opacity='.7'/%3E%3Ccircle cx='50' cy='52' r='18' fill='none' stroke='%23fff' stroke-width='1.5' opacity='.9'/%3E%3Ccircle cx='50' cy='52' r='4' fill='%23fff' opacity='.9'/%3E%3Cpath d='M50 34 L50 70 M32 52 L68 52' stroke='%23fff' stroke-width='1.5' opacity='.6'/%3E%3Ctext x='50' y='27' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='7' font-weight='900' fill='%23f0c040' letter-spacing='1'%3EHIHIHAHA%3C/text%3E%3Ctext x='50' y='88' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='6' font-weight='900' fill='%23f0c040' letter-spacing='1'%3EFC%3C/text%3E%3C/svg%3E";
 const CDN_CLOUD      = "dn7cvccms";
 const CDN_PRESET     = "hihihahaFC";
 const PRICE = { red_win:30000, red_lose:40000, blk_win:30000, blk_lose:40000, draw:35000, penalty:40000 };
@@ -944,6 +945,7 @@ async function loadVote(hid) {
 
 /* vote */
 window.castVote = async (mid,choice) => {
+  if(me.approved===false){toast('Tài khoản bị treo giò! Liên hệ Host.','err');return;}
   const ref=doc(db,'matches',mid), snap=await getDoc(ref);
   if(!snap.exists()){toast('Trận không tồn tại','err');return;}
   if(snap.data().locked){toast('Bình chọn đã bị khóa!','err');return;}
@@ -1153,6 +1155,7 @@ window.removeFromMatch = async (uid,name) => {
 // Preload logo
 const _logoImg = new Image();
 _logoImg.crossOrigin='anonymous';
+_logoImg.onerror = () => { _logoImg.src = LOGO_FALLBACK; };
 _logoImg.src = LOGO_URL;
 
 // Avatar photo cache: uid -> photoUrl
@@ -2010,6 +2013,7 @@ async function loadTeam() {
   users.forEach(u=>{
     stats[u.uid]={
       name:u.name,email:u.email,role:u.role||'player',
+      photo:u.photo||'',
       approved:u.approved!==false, warning:u.warning||false,
       warningMsg:u.warningMsg||'',
       played:0,wins:0,losses:0,draws:0,owed:0,
@@ -2080,8 +2084,10 @@ async function loadTeam() {
     const roleLbl={admin:'Admin 👑',host:'Host 🏅',player:'Cầu thủ'}[s.role]||'Cầu thủ';
     html+=`<div style="border-bottom:1px solid var(--border);${rowBg}padding:11px 14px;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div class="pav ${avCls}" style="width:38px;height:38px;font-size:13px;flex-shrink:0;">
-          ${(s.name||'?').charAt(0).toUpperCase()}
+        <div class="pav ${avCls}" style="width:38px;height:38px;font-size:13px;flex-shrink:0;padding:0;overflow:hidden;">
+          ${s.photo?`<img src="${s.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+            onerror="this.style.display='none'"/>`:''}
+          ${s.photo?'':((s.name||'?').charAt(0).toUpperCase())}
         </div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
@@ -2103,11 +2109,11 @@ async function loadTeam() {
           ?`<button class="btn btn-sm btn-g" onclick="unlockAccount('${uid}','${s.name.replace(/'/g,"\'")}')">🔓 Mở khóa</button>`
           :`<button class="btn btn-sm btn-r" onclick="lockAccount('${uid}','${s.name.replace(/'/g,"\'")}')">🔒 Khóa</button>`}
         <button class="btn btn-sm btn-a" onclick="warnPlayer('${uid}','${s.name.replace(/'/g,"\'")}')">⚠️ Cảnh cáo</button>
-        <select class="fi" style="padding:4px 7px;font-size:11px;width:86px;" onchange="setRole('${uid}',this.value)">
+        ${me.role==='admin'?`<select class="fi" style="padding:4px 7px;font-size:11px;width:86px;" onchange="setRole('${uid}',this.value)">
           <option value="player" ${s.role==='player'?'selected':''}>Cầu thủ</option>
           <option value="host"   ${s.role==='host'?'selected':''}>Host</option>
           <option value="admin"  ${s.role==='admin'?'selected':''}>Admin</option>
-        </select>
+        </select>`:''}
       </div>`}
     </div>`;
   });
