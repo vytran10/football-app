@@ -487,60 +487,96 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 </div>
 
 <!-- SPLIT TEAMS -->
-<div class="mo" id="m-split">
-  <div class="mb" style="padding:0;border-radius:var(--rxl) var(--rxl) 0 0;overflow:hidden;">
+<!-- MODAL: THÊM VÃNG LAI -->
+<div class="mo" id="m-vl">
+  <div class="mb">
+    <div class="mb-handle"></div>
+    <div class="mtit">🏃 Thêm cầu thủ vãng lai <button class="mclose" onclick="CM('m-vl')">✕</button></div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:14px;">
+      Cầu thủ vãng lai sẽ tham gia trận, được chia đội và tính tiền.<br/>
+      Tiền vãng lai do <strong style="color:var(--text)">cầu thủ mời</strong> chịu trách nhiệm thanh toán.
+    </div>
+    <!-- Chọn cầu thủ chính -->
+    <div class="fg">
+      <label class="fl">Cầu thủ mời (chịu tiền vãng lai)</label>
+      <select class="fi" id="vl-host-select">
+        <option value="">-- Chọn cầu thủ --</option>
+      </select>
+    </div>
+    <!-- Số lượng vãng lai -->
+    <div class="fg">
+      <label class="fl">Số lượng vãng lai</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="vlAdj(-1)" style="width:40px;height:40px;border-radius:50%;background:var(--s3);
+          border:1px solid var(--border2);font-size:20px;cursor:pointer;color:var(--text);font-family:inherit;
+          display:flex;align-items:center;justify-content:center;flex-shrink:0;">−</button>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:36px;font-weight:900;color:var(--g);" id="vl-count-disp">1</div>
+          <div style="font-size:11px;color:var(--t2);">người vãng lai</div>
+        </div>
+        <button onclick="vlAdj(1)" style="width:40px;height:40px;border-radius:50%;background:var(--s3);
+          border:1px solid var(--border2);font-size:20px;cursor:pointer;color:var(--text);font-family:inherit;
+          display:flex;align-items:center;justify-content:center;flex-shrink:0;">+</button>
+      </div>
+    </div>
+    <!-- Preview -->
+    <div id="vl-preview" style="background:var(--s2);border:1px solid var(--border);border-radius:var(--rr);
+      padding:10px 12px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:6px;">Sẽ được thêm vào trận:</div>
+      <div id="vl-preview-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+    </div>
+    <div class="brow">
+      <button class="btn" style="flex:1" onclick="CM('m-vl')">Hủy</button>
+      <button class="btn btn-p" style="flex:2" onclick="confirmAddVL()">Thêm vãng lai ✓</button>
+    </div>
+  </div>
+</div>
 
-    <!-- Handle + Title -->
-    <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);">
-      <div class="mb-handle" style="margin-bottom:10px;"></div>
+<div class="mo" id="m-split">
+  <div class="mb" style="padding:0;border-radius:var(--rxl) var(--rxl) 0 0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+
+    <!-- Handle + Title (fixed) -->
+    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div class="mb-handle" style="margin-bottom:8px;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:16px;font-weight:800;">⚔️ Chia đội</div>
         <button class="mclose" onclick="CM('m-split')">✕</button>
       </div>
     </div>
 
-    <!-- Team preview: always visible, compact -->
-    <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+    <!-- Team preview (fixed, compact) -->
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
       <div id="split-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
     </div>
 
-    <!-- Player list: scrollable -->
-    <div style="padding:10px 14px;max-height:42vh;overflow-y:auto;">
-      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;
-        letter-spacing:.7px;margin-bottom:8px;">Người tham gia</div>
+    <!-- Player list: native scroll, touch-action pan-y -->
+    <div style="flex:1;overflow-y:scroll;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:8px 14px;">
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">
+        Người tham gia trận
+      </div>
       <div id="split-list"></div>
-    </div>
-
-    <!-- Bottom action bar -->
-    <div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--s1);">
-
-      <!-- Add player: collapsed by default, expand on tap -->
-      <div id="add-player-wrap" style="margin-bottom:8px;">
-        <button onclick="toggleAddPanel()" style="width:100%;padding:9px 12px;background:var(--s2);
-          border:1px dashed var(--border2);border-radius:var(--rr);color:var(--t2);
-          font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
-          display:flex;align-items:center;justify-content:space-between;">
-          <span>👤 Thêm cầu thủ chưa bình chọn</span>
-          <span id="add-panel-arrow" style="transition:transform .2s;">▼</span>
-        </button>
-        <div id="add-player-panel" style="display:none;background:var(--s2);border:1px solid var(--border2);
-          border-top:none;border-radius:0 0 var(--rr) var(--rr);max-height:200px;overflow-y:auto;">
-          <div id="add-player-list" style="padding:4px 0;"></div>
-          <div id="add-player-empty" style="font-size:12px;color:var(--t3);text-align:center;
-            padding:12px;display:none;">✓ Tất cả thành viên đã trong trận</div>
+      <!-- Add registered player: inline, no panel -->
+      <div id="add-registered-section" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2);">
+        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">
+          Thêm cầu thủ đã đăng ký
+        </div>
+        <div id="add-player-list"></div>
+        <div id="add-player-empty" style="font-size:12px;color:var(--t3);text-align:center;padding:10px 0;display:none;">
+          ✓ Tất cả đã trong trận
         </div>
       </div>
+    </div>
 
-      <!-- Action buttons -->
+    <!-- Bottom buttons (fixed) -->
+    <div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0;">
       <div style="display:flex;gap:8px;">
-        <button class="btn" style="flex:1;padding:10px;" onclick="CM('m-split')">Đóng</button>
-        <button class="btn btn-share" style="flex:2;padding:10px;display:flex;align-items:center;
-          justify-content:center;gap:7px;" onclick="exportTeamImage()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <button class="btn" style="flex:1;padding:11px;" onclick="CM('m-split')">Đóng</button>
+        <button class="btn btn-share" style="flex:2;padding:11px;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportTeamImage()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
             <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
           </svg>
-          Xuất ảnh · Share Zalo
+          Xuất ảnh Zalo
         </button>
       </div>
     </div>
@@ -859,8 +895,11 @@ async function loadVote(hid) {
 
   active.forEach(m => {
     const votes=m.votes||{}, names=m.voteNames||{};
+    const vl   = m.vanglai||{}; // {hostUid: count}
+    const vlNames = m.vlNames||{}; // {"uid_1": "Huy VL1", ...}
     const inP  = Object.entries(votes).filter(([,v])=>v==='in');
     const outP = Object.entries(votes).filter(([,v])=>v==='out');
+    const vlCount = Object.values(vl).reduce((s,n)=>s+n,0);
     const myV  = votes[me.uid];
     const locked = m.locked||false;
     const teams  = m.teams||null;
@@ -868,7 +907,8 @@ async function loadVote(hid) {
 
     // vote name chips — hidden after lock for non-host
     const showNames = can('lockVote') || !locked;
-    const inChips = showNames ? inP.map(([uid])=>`<span class="chip cg" style="font-size:10px;padding:2px 6px;">${names[uid]||'?'}</span>`).join(' ') : '';
+    const vlChips = showNames ? Object.values(vlNames||{}).map(n=>`<span class="chip cb" style="font-size:10px;padding:2px 6px;">${n}</span>`).join(' ') : '';
+    const inChips = showNames ? inP.map(([uid])=>`<span class="chip cg" style="font-size:10px;padding:2px 6px;">${names[uid]||'?'}</span>`).join(' ') + vlChips : '';
 
     // teams
     let teamsH='';
@@ -905,6 +945,8 @@ async function loadVote(hid) {
               <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
             </svg>Share Zalo
           </button>
+          <button class="btn btn-sm" style="background:var(--blbg);color:var(--bl);border-color:rgba(74,144,217,.25);"
+            onclick="openVLModal('${m.id}')">🏃 Vãng lai</button>
           <button class="btn btn-sm btn-r" onclick="confirmCancel('${m.id}')">🗑️ Hủy trận</button>
         `:`
           <button class="btn btn-sm btn-a" onclick="confirmUnlock('${m.id}')">🔓 Mở khóa</button>
@@ -931,8 +973,9 @@ async function loadVote(hid) {
         <span class="spill ${locked?'sp-l':'sp-o'}">${locked?'🔒 Đã khóa':'Đang mở'}</span>
       </div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:6px;">
-        ✅ <strong style="color:var(--g)">${inP.length}</strong> đá &nbsp;·&nbsp;
-        ❌ <strong style="color:var(--r)">${outP.length}</strong> nghỉ
+        ✅ <strong style="color:var(--g)">${inP.length}</strong> đá
+        ${vlCount?`&nbsp;·&nbsp; 🏃 <strong style="color:var(--bl)">${vlCount}</strong> vãng lai`:''}
+        &nbsp;·&nbsp; ❌ <strong style="color:var(--r)">${outP.length}</strong> nghỉ
       </div>
       ${inChips?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${inChips}</div>`:''}
       ${teamsH}${voteH}${hCtrl}
@@ -968,6 +1011,86 @@ window.confirmCancel = mid => showConfirm('🗑️ Hủy trận này?','Thao tá
   await deleteDoc(doc(db,'matches',mid));
   toast('🗑️ Đã hủy trận!'); loadVote();
 });
+
+/* ── VÃNG LAI ── */
+let vlMid='', vlCount=1;
+
+window.openVLModal = async (mid) => {
+  vlMid=mid; vlCount=1;
+  $('vl-count-disp').textContent='1';
+  // Load players who voted 'in'
+  const snap=await getDoc(doc(db,'matches',mid));
+  if(!snap.exists())return;
+  const m=snap.data(), votes=m.votes||{}, names=m.voteNames||{};
+  const inP=Object.entries(votes).filter(([,v])=>v==='in');
+  const sel=$('vl-host-select');
+  sel.innerHTML='<option value="">-- Chọn cầu thủ --</option>'
+    +inP.map(([uid])=>`<option value="${uid}">${names[uid]||uid}</option>`).join('');
+  updateVLPreview();
+  $('m-vl').classList.add('op');
+};
+
+window.vlAdj = (d) => {
+  vlCount=Math.max(1,Math.min(10,vlCount+d));
+  $('vl-count-disp').textContent=vlCount;
+  updateVLPreview();
+};
+
+function updateVLPreview(){
+  const sel=$('vl-host-select');
+  const hostName=sel.options[sel.selectedIndex]?.text||'?';
+  const isSelected=sel.value!=='';
+  const prev=$('vl-preview-list');
+  if(!isSelected){prev.innerHTML='<span style="font-size:12px;color:var(--t3);">Chọn cầu thủ trước</span>';return;}
+  let chips='';
+  for(let i=1;i<=vlCount;i++){
+    chips+=`<span class="chip cb" style="font-size:11px;padding:3px 9px;">${hostName} VL${i}</span>`;
+  }
+  prev.innerHTML=chips;
+}
+
+window.confirmAddVL = async () => {
+  const hostUid=$('vl-host-select').value;
+  if(!hostUid){toast('Chọn cầu thủ mời!','err');return;}
+  const snap=await getDoc(doc(db,'matches',vlMid));
+  if(!snap.exists())return;
+  const m=snap.data(), names=m.voteNames||{};
+  const hostName=names[hostUid]||hostUid;
+  const existVL=m.vanglai||{}, existVLN=m.vlNames||{};
+  // Find existing VL count for this host
+  const curCount=existVL[hostUid]||0;
+  const patch={[`vanglai.${hostUid}`]:curCount+vlCount};
+  for(let i=1;i<=vlCount;i++){
+    const key=`${hostUid}_${curCount+i}`;
+    patch[`vlNames.${key}`]=`${hostName} VL${curCount+i}`;
+  }
+  await updateDoc(doc(db,'matches',vlMid),patch);
+  CM('m-vl');
+  toast(`✅ Đã thêm ${vlCount} vãng lai của ${hostName}!`);
+  loadVote();
+};
+
+window.removeVL = async (mid,key,name) => {
+  showConfirm(`Xóa ${name}?`,`Vãng lai sẽ bị xóa khỏi trận và danh sách chia đội.`,'Xóa','btn-r',async()=>{
+    const ref=doc(db,'matches',mid);
+    const snap=await getDoc(ref);
+    const m=snap.data()||{};
+    const teams=m.teams?JSON.parse(JSON.stringify(m.teams)):{R:[],B:[]};
+    teams.R=teams.R.filter(n=>n!==name);
+    teams.B=teams.B.filter(n=>n!==name);
+    // Decrement vanglai count
+    const hostUid=key.split('_')[0];
+    const cur=m.vanglai?.[hostUid]||1;
+    await updateDoc(ref,{
+      [`vlNames.${key}`]:null,
+      [`vanglai.${hostUid}`]:Math.max(0,cur-1),
+      teams
+    });
+    toast(`Đã xóa ${name}`);
+    if(_splitSnap){const s=await getDoc(ref);_splitSnap=s;renderSplitModal(s.data());}
+    loadVote();
+  });
+};
 
 /* share */
 window.shareMatch = (mid, dstr) => {
@@ -1027,10 +1150,16 @@ function renderSplitModal(m) {
   const votes=m.votes||{}, names=m.voteNames||{};
   const teams=m.teams||{R:[],B:[]};
 
-  // Participants = voted 'in'
+  // Participants = voted 'in' + vãng lai
+  const vl=m.vanglai||{}, vlNames=m.vlNames||{};
   const inP=Object.entries(votes)
     .filter(([,v])=>v==='in')
-    .map(([uid])=>({uid,name:names[uid]||uid}));
+    .map(([uid])=>({uid,name:names[uid]||uid,isVL:false,vlHost:null}));
+  // Add VL entries
+  Object.entries(vlNames).forEach(([key,name])=>{
+    const hostUid=key.split('_')[0];
+    inP.push({uid:key,name,isVL:true,vlHost:names[hostUid]||hostUid});
+  });
 
   // ── Preview cards (top) ──
   const pv=$('split-preview');
@@ -1099,7 +1228,8 @@ function renderSplitModal(m) {
               style="padding:6px 8px;${inB?'background:rgba(80,80,80,.3);color:#ccc;border-color:rgba(120,120,120,.4);':''}"
               onclick="assignT('${p.uid}','${p.name}','B')">⚫</button>
             <button class="btn btn-sm btn-r" style="padding:6px 8px;" title="Xóa khỏi trận"
-              onclick="removeFromMatch('${p.uid}','${p.name}')">✕</button>
+              onclick="${p.isVL?`removeVL('${splitMid}','${p.uid}','${p.name}')`:
+                `removeFromMatch('${p.uid}','${p.name}')`}">✕</button>
           </div>
         </div>`;
       }).join('');
@@ -1726,7 +1856,28 @@ function calcFundStats() {
       if(payments[uid]===true) matchCollected += price;
       else matchPending += price;
     });
+    // VL: tiền tính vào host của vãng lai đó
+    Object.entries(m.vanglai||{}).forEach(([hostUid,cnt])=>{
+      if(!cnt) return;
+      const price = getPrice(m,hostUid); // same team = same price per VL
+      const vlTotal = price * cnt;
+      matchTotal += vlTotal;
+      if(payments['vl_'+hostUid]===true) matchCollected += vlTotal;
+      else matchPending += vlTotal;
+    });
 
+    // VL: debt belongs to the host who invited them
+    Object.entries(m.vanglai||{}).forEach(([hostUid,cnt])=>{
+      if(!cnt)return;
+      const price=getPrice(m,hostUid);
+      const vlTotal=price*cnt;
+      const name=(m.voteNames||{})[hostUid]||hostUid;
+      if(!payments['vl_'+hostUid]){
+        if(!debtMap[hostUid])debtMap[hostUid]={name,debt:0,matches:[]};
+        debtMap[hostUid].debt+=vlTotal;
+        debtMap[hostUid].matches.push({mid:m.id,date:m.dateLabel||m.id,price:vlTotal,vl:true,vlCount:cnt});
+      }
+    });
     // Penalties (vắng mặt bị phạt)
     Object.entries(penalties).filter(([,v])=>v===true).forEach(([uid])=>{
       matchTotal += 40000;
@@ -2286,14 +2437,8 @@ async function loadProfile() {
   el.innerHTML=html;
 }
 
-/* ── ADD PLAYER PANEL TOGGLE ── */
-window.toggleAddPanel = () => {
-  const panel = $('add-player-panel');
-  const arrow = $('add-panel-arrow');
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
-};
+/* ── ADD PLAYER PANEL (now inline, no toggle needed) ── */
+window.toggleAddPanel = () => {}; // kept for compatibility
 
 /* ── AVATAR UPLOAD (Cloudinary) ── */
 window.openAvatarUpload = () => {
@@ -2423,6 +2568,11 @@ function fmtDate(d){
   const days=['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
   return `${days[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }
+
+/* ── VL SELECT LISTENER ── */
+document.addEventListener('change', e => {
+  if(e.target.id==='vl-host-select') updateVLPreview();
+});
 
 /* ── CONFIRM DIALOG ── */
 window.showConfirm = (title, desc, okLabel, okCls, onOk) => {
