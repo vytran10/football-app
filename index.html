@@ -499,7 +499,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
     <!-- Chọn cầu thủ chính -->
     <div class="fg">
       <label class="fl">Cầu thủ mời (chịu tiền vãng lai)</label>
-      <select class="fi" id="vl-host-select">
+      <select class="fi" id="vl-host-select" onchange="updateVLPreview()">
         <option value="">-- Chọn cầu thủ --</option>
       </select>
     </div>
@@ -1018,15 +1018,18 @@ let vlMid='', vlCount=1;
 window.openVLModal = async (mid) => {
   vlMid=mid; vlCount=1;
   $('vl-count-disp').textContent='1';
-  // Load players who voted 'in'
   const snap=await getDoc(doc(db,'matches',mid));
-  if(!snap.exists())return;
+  if(!snap.exists()){toast('Không tìm thấy trận!','err');return;}
   const m=snap.data(), votes=m.votes||{}, names=m.voteNames||{};
+  // Show players who voted 'in' (those participating)
   const inP=Object.entries(votes).filter(([,v])=>v==='in');
+  if(!inP.length){toast('Chưa có ai đăng ký đá!','err');return;}
   const sel=$('vl-host-select');
-  sel.innerHTML='<option value="">-- Chọn cầu thủ --</option>'
+  sel.value='';
+  sel.innerHTML='<option value="">-- Chọn cầu thủ mời --</option>'
     +inP.map(([uid])=>`<option value="${uid}">${names[uid]||uid}</option>`).join('');
-  updateVLPreview();
+  // Reset preview
+  $('vl-preview-list').innerHTML='<span style="font-size:12px;color:var(--t3);">← Chọn cầu thủ để xem preview</span>';
   $('m-vl').classList.add('op');
 };
 
@@ -1038,15 +1041,20 @@ window.vlAdj = (d) => {
 
 function updateVLPreview(){
   const sel=$('vl-host-select');
-  const hostName=sel.options[sel.selectedIndex]?.text||'?';
+  if(!sel)return;
   const isSelected=sel.value!=='';
   const prev=$('vl-preview-list');
-  if(!isSelected){prev.innerHTML='<span style="font-size:12px;color:var(--t3);">Chọn cầu thủ trước</span>';return;}
+  if(!isSelected){
+    prev.innerHTML='<span style="font-size:12px;color:var(--t3);">← Chọn cầu thủ để xem preview</span>';
+    return;
+  }
+  const hostName=sel.options[sel.selectedIndex].text;
   let chips='';
   for(let i=1;i<=vlCount;i++){
-    chips+=`<span class="chip cb" style="font-size:11px;padding:3px 9px;">${hostName} VL${i}</span>`;
+    chips+=`<span class="chip cb" style="font-size:11px;padding:3px 9px;margin:2px;">🏃 ${hostName} VL${i}</span>`;
   }
-  prev.innerHTML=chips;
+  prev.innerHTML=chips+`<div style="font-size:11px;color:var(--t2);margin-top:8px;width:100%;">
+    💰 Tiền sẽ tính cho <strong>${hostName}</strong></div>`;
 }
 
 window.confirmAddVL = async () => {
@@ -1668,13 +1676,14 @@ async function loadManage() {
     <button class="ftab ${manageFilter==='all'?'on':''}" onclick="setMF('all')">Tất cả trận</button>
     <button class="ftab ${manageFilter==='debt'?'on':''}" onclick="setMF('debt')">Tổng nợ</button>
     <button class="ftab ${manageFilter==='person'?'on':''}" onclick="setMF('person')">Theo người</button>
+    ${me.role==='admin'?`<button class="ftab ${manageFilter==='edit'?'on':''}" onclick="setMF('edit')" style="color:var(--gold);">⚙️ Chỉnh</button>`:''}
   </div><div id="manage-body"></div>`;
 
   el.innerHTML=html;
   renderManage(all, debtors, debtMap);
 }
 
-function setMF(f){manageFilter=f;document.querySelectorAll('.ftab').forEach(t=>{t.classList.toggle('on',t.textContent.trim()==={all:'Tất cả trận',debt:'Tổng nợ',person:'Theo người'}[f]);});loadManage();}
+function setMF(f){manageFilter=f;document.querySelectorAll('.ftab').forEach(t=>{const map={all:'Tất cả trận',debt:'Tổng nợ',person:'Theo người',edit:'⚙️ Chỉnh'};t.classList.toggle('on',t.textContent.trim()===map[f]||(f==='edit'&&t.textContent.includes('Chỉnh')));});loadManage();}
 window.setMF=setMF;
 
 function getPrice(m,uid){
@@ -1784,10 +1793,129 @@ function renderManage(all,debtors,debtMap){
     });
     return;
   }
+  else if(manageFilter==='edit'){
+    // Admin: edit completed matches
+    html+=`<div class="sh">⚙️ Chỉnh sửa kết quả trận (Admin)</div>`;
+    if(!all.length){
+      html+=`<div class="empty"><div class="emi">📋</div><div class="emt">Chưa có trận nào kết thúc</div></div>`;
+      el.innerHTML=html; return;
+    }
+    all.forEach(m=>{
+      const votes=m.votes||{}, names=m.voteNames||{}, teams=m.teams||{R:[],B:[]};
+      const penalties=m.penalties||{};
+      const inP=Object.entries(votes).filter(([,v])=>v==='in');
+      html+=`<div class="menu-item" onclick="toggleMenu(this)">
+        <div class="menu-head">
+          <div>
+            <div style="font-size:14px;font-weight:700;">${m.fieldName||'Sân bóng'}</div>
+            <div style="font-size:11px;color:var(--t2);">${m.dateLabel||m.id} · <span style="color:var(--gold)">${m.resultLabel||'Chưa có KQ'}</span></div>
+          </div>
+          <span class="menu-arrow">▼</span>
+        </div>
+        <div class="menu-body" onclick="event.stopPropagation()">
+
+          <!-- Chỉnh kết quả -->
+          <div class="sh" style="margin-top:0;">🏆 Kết quả trận</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+            <button class="btn btn-sm ${m.result==='red'?'':'btn-g'}" onclick="editMatchResult('${m.id}','red')"
+              style="${m.result==='red'?'background:rgba(224,72,72,.25);color:#ff7070;border-color:rgba(224,72,72,.4);font-weight:800;':''}" >
+              🔴 Đỏ thắng
+            </button>
+            <button class="btn btn-sm ${m.result==='blk'?'':'btn-g'}" onclick="editMatchResult('${m.id}','blk')"
+              style="${m.result==='blk'?'background:rgba(80,80,80,.3);color:#ccc;border-color:rgba(120,120,120,.4);font-weight:800;':''}">
+              ⚫ Đen thắng
+            </button>
+            <button class="btn btn-sm ${m.result==='draw'?'':'btn-g'}" onclick="editMatchResult('${m.id}','draw')"
+              style="${m.result==='draw'?'background:var(--ambg);color:var(--am);border-color:rgba(224,144,48,.4);font-weight:800;':''}">
+              🤝 Hòa
+            </button>
+          </div>
+
+          <!-- Chỉnh đội -->
+          <div class="sh">⚔️ Phân đội lại</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:8px;">Bấm vào tên cầu thủ để đổi đội</div>
+          ${inP.map(([uid])=>{
+            const name=names[uid]||uid;
+            const inR=teams.R?.includes(name), inB=teams.B?.includes(name);
+            return `<div class="prow" style="padding:6px 0;">
+              <div class="pav av-b" style="width:30px;height:30px;font-size:11px;">${name.charAt(0)}</div>
+              <div class="pi"><div class="pn" style="font-size:12px;">${name}</div></div>
+              <div style="display:flex;gap:5px;">
+                <button class="btn btn-sm" style="font-size:10px;${inR?'background:rgba(224,72,72,.25);color:#ff7070;':''}"
+                  onclick="adminSwitchTeam('${m.id}','${uid}','${name}','R')">🔴 Đỏ</button>
+                <button class="btn btn-sm" style="font-size:10px;${inB?'background:rgba(80,80,80,.25);color:#ccc;':''}"
+                  onclick="adminSwitchTeam('${m.id}','${uid}','${name}','B')">⚫ Đen</button>
+              </div>
+            </div>`;
+          }).join('')}
+
+          <!-- Chỉnh phạt -->
+          <div class="sh" style="margin-top:10px;">⚠️ Phạt vắng mặt</div>
+          ${inP.map(([uid])=>{
+            const name=names[uid]||uid;
+            const penalized=penalties[uid]===true;
+            return `<div class="prow" style="padding:6px 0;">
+              <div class="pav ${penalized?'av-r':'av-b'}" style="width:30px;height:30px;font-size:11px;">${name.charAt(0)}</div>
+              <div class="pi"><div class="pn" style="font-size:12px;">${name}</div></div>
+              <button class="btn btn-sm ${penalized?'btn-g':'btn-r'}" style="font-size:10px;"
+                onclick="adminTogglePenalty('${m.id}','${uid}','${name}',${!penalized})">
+                ${penalized?'✓ Bỏ phạt':'⚠️ Phạt'}
+              </button>
+            </div>`;
+          }).join('')}
+
+        </div>
+      </div>`;
+    });
+  }
   el.innerHTML=html;
 }
 
 window.toggleMenu = el => { el.classList.toggle('open'); };
+
+/* ── ADMIN: CHỈNH KẾT QUẢ TRẬN ── */
+window.editMatchResult = async (mid, newResult) => {
+  const lbl={red:'🔴 Đỏ thắng',blk:'⚫ Đen thắng',draw:'🤝 Hòa'};
+  showConfirm(
+    `Đổi kết quả thành "${lbl[newResult]}"?`,
+    'Số tiền mỗi người sẽ được tính lại theo kết quả mới. Các tick đã nộp vẫn giữ nguyên.',
+    'Xác nhận đổi','btn-gold',
+    async()=>{
+      const ref=doc(db,'matches',mid), snap=await getDoc(ref);
+      const m=snap.data()||{}, votes=m.votes||{};
+      const inP=Object.entries(votes).filter(([,v])=>v==='in');
+      const teams=m.teams||{R:[],B:[]};
+      const penalties=m.penalties||{};
+      // Recalc totalAmount
+      let total=0;
+      inP.forEach(([uid])=>{total+=calcPlayerPrice(newResult,uid,m.voteNames||{},teams);});
+      Object.values(penalties).filter(Boolean).forEach(()=>{total+=40000;});
+      await updateDoc(ref,{
+        result:newResult,
+        resultLabel:{red:'🔴 Đỏ thắng',blk:'⚫ Đen thắng',draw:'🤝 Hòa'}[newResult],
+        totalAmount:total
+      });
+      toast('✅ Đã đổi kết quả!'); loadManage();
+    }
+  );
+};
+
+window.adminSwitchTeam = async (mid, uid, name, team) => {
+  const ref=doc(db,'matches',mid), snap=await getDoc(ref);
+  const m=snap.data()||{};
+  const teams=m.teams?JSON.parse(JSON.stringify(m.teams)):{R:[],B:[]};
+  const other=team==='R'?'B':'R';
+  teams[other]=teams[other].filter(n=>n!==name);
+  if(!teams[team].includes(name)) teams[team].push(name);
+  await updateDoc(ref,{teams});
+  toast(`✅ ${name} → ${team==='R'?'🔴 Đỏ':'⚫ Đen'}`); loadManage();
+};
+
+window.adminTogglePenalty = async (mid, uid, name, penalize) => {
+  const ref=doc(db,'matches',mid);
+  await updateDoc(ref,{[`penalties.${uid}`]:penalize});
+  toast(penalize?`⚠️ Đã phạt ${name}!`:`✓ Đã bỏ phạt ${name}`); loadManage();
+};
 
 window.markPaid = async (mid,uid,name,price) => {
   const ref=doc(db,'matches',mid), snap=await getDoc(ref);
