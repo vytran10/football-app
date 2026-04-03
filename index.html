@@ -508,20 +508,20 @@ function renderSplit(){
     return '<div style="background:'+bg+';border-radius:var(--rr);padding:10px;">'+
       '<div style="font-size:11px;font-weight:800;margin-bottom:6px;color:'+tc+';">'+ico+' Doi '+(t==='R'?'Do':'Den')+' - '+mb.length+'</div>'+
       (mb.length?mb.map((n,i)=>'<div style="font-size:12px;padding:2px 0;color:#dde8d8;">'+(i+1)+'. '+n+'</div>').join(''):
-        '<div style="font-size:11px;color:#555;font-style:italic;">Chua co ai</div>')+
+        '<div style="font-size:11px;color:#555;font-style:italic;">Chưa có ai</div>')+
       '</div>';
   };
   $('split-preview').innerHTML=mkT('R','rgba(224,72,72,.13)','#ff7070','🔴')+mkT('B','rgba(80,80,80,.18)','#bbb','⚫');
   // Participant list - use DOM to avoid quote issues
   const listEl=$('split-list');
-  if(!parts.length){listEl.innerHTML='<div class="empty" style="padding:1rem 0;"><div class="emt">Chua co ai tham gia</div></div>';return;}
+  if(!parts.length){listEl.innerHTML='<div class="empty" style="padding:1rem 0;"><div class="emt">Chưa có ai tham gia</div></div>';return;}
   listEl.innerHTML='';
   parts.forEach(function(p){
     const inR=teams.R&&teams.R.includes(p.name),inB=teams.B&&teams.B.includes(p.name);
     const row=document.createElement('div');
     row.className='prow';row.style.cssText='padding:8px 0;';
     const avBg=inR?'background:rgba(224,72,72,.2);color:#ff7070;':inB?'background:rgba(80,80,80,.22);color:#bbb;':'background:var(--blbg);color:var(--bl);';
-    const tLabel=inR?'🔴 Doi Do':inB?'⚫ Doi Den':'⚠ Chua phan';
+    const tLabel=inR?'🔴 Đội Đỏ':inB?'⚫ Đội Đen':'⚠ Chưa phân';
     const tColor=inR?'#ff7070':inB?'#aaa':'var(--am)';
     const avDiv=document.createElement('div');
     avDiv.style.cssText='width:34px;height:34px;font-size:12px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;'+avBg;
@@ -548,11 +548,11 @@ function renderSplit(){
   const addEl=$('split-add-list');
   const inUids=new Set(Object.entries(votes).filter(([,v])=>v==='in').map(([uid])=>uid));
   const notIn=(_usersCache||[]).filter(function(u){return !inUids.has(u.uid);});
-  if(!notIn.length){addEl.innerHTML='<div style="font-size:12px;color:var(--t3);text-align:center;padding:8px 0;">✓ Tat ca da trong tran</div>';return;}
+  if(!notIn.length){addEl.innerHTML='<div style="font-size:12px;color:var(--t3);text-align:center;padding:8px 0;">✓ Tất cả đã trong trận</div>';return;}
   addEl.innerHTML='';
   notIn.forEach(function(u){
     const row=document.createElement('div');row.className='prow';row.style.cssText='padding:7px 0;';
-    const st=votes[u.uid]==='out'?'Bao nghi':'Chua binh chon';
+    const st=votes[u.uid]==='out'?'Báo nghỉ':'Chưa bình chọn';
     const av=document.createElement('div');av.className='pav av-b';av.style.cssText='width:30px;height:30px;font-size:11px;';av.textContent=(u.name||'?').charAt(0).toUpperCase();
     const info=document.createElement('div');info.className='pi';
     const nm=document.createElement('div');nm.className='pn';nm.style.cssText='font-size:12px;';nm.textContent=u.name;
@@ -863,7 +863,7 @@ async function loadTeam(){
     infoDiv.innerHTML='<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:700;'+nameColor+'">'+s.name+'</span>'+badges+'</div>'+
       '<div style="font-size:10px;color:var(--t3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+s.email+'</div>'+
       '<div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;align-items:center;">'+
-      '<span class="rbadge '+(s.role==='admin'?'rb-a':s.role==='host'?'rb-h':'rb-p')+'" style="font-size:9px;">'+(RBL[s.role]||'Cau thu')+'</span>'+
+      '<span class="rbadge '+(s.role==='admin'?'rb-a':s.role==='host'?'rb-h':'rb-p')+'" style="font-size:9px;">'+(RBL[s.role]||'Cầu thủ')+'</span>'+
       '<span style="font-size:11px;color:var(--t2);">'+s.played+'⚽ '+s.wins+'W '+s.losses+'L</span>'+
       (s.owed>0?'<span class="pill pl-no" style="font-size:10px;">'+fM(s.owed)+'</span>':'<span class="pill pl-ok" style="font-size:10px;">Sạch ✓</span>')+
       '</div>';
@@ -1153,8 +1153,8 @@ async function loadManage(){
   });
   const debtors=Object.values(debtMap).filter(d=>d.debt>0).sort((a,b)=>b.debt-a.debt);
   const totalDebt=debtors.reduce((s,d)=>s+d.debt,0);
-  let html='<div class="sg"><div class="sc"><div class="sl">Tran done</div><div class="sv">'+all.length+'</div></div><div class="sc"><div class="sl">Nguoi no</div><div class="sv sv-r">'+debtors.length+'</div></div><div class="sc"><div class="sl">Tong no</div><div class="sv sv-r">'+fM(totalDebt)+'</div></div></div>';
-  html+='<div class="ftabs"><button class="ftab'+(mFilter==='all'?' on':'')+'" onclick="setMF(\'all\')">Tat ca tran</button><button class="ftab'+(mFilter==='debt'?' on':'')+'" onclick="setMF(\'debt\')">Tong no</button><button class="ftab'+(mFilter==='person'?' on':'')+'" onclick="setMF(\'person\')">Theo nguoi</button>'+(me.role==='admin'?'<button class="ftab'+(mFilter==='edit'?' on':'')+'" onclick="setMF(\'edit\')" style="color:var(--gold);">Chinh</button>':'')+'</div><div id="mgr-body"></div>';
+  let html='<div class="sg"><div class="sc"><div class="sl">Tran done</div><div class="sv">'+all.length+'</div></div><div class="sc"><div class="sl">Nguoi no</div><div class="sv sv-r">'+debtors.length+'</div></div><div class="sc"><div class="sl">Tổng nợ</div><div class="sv sv-r">'+fM(totalDebt)+'</div></div></div>';
+  html+='<div class="ftabs"><button class="ftab'+(mFilter==='all'?' on':'')+'" onclick="setMF(\'all\')">Tất cả trận</button><button class="ftab'+(mFilter==='debt'?' on':'')+'" onclick="setMF(\'debt\')">Tổng nợ</button><button class="ftab'+(mFilter==='person'?' on':'')+'" onclick="setMF(\'person\')">Theo người</button>'+(me.role==='admin'?'<button class="ftab'+(mFilter==='edit'?' on':'')+'" onclick="setMF(\'edit\')" style="color:var(--gold);">⚙️ Chỉnh</button>':'')+'</div><div id="mgr-body"></div>';
   el.innerHTML=html;
   renderManage(all,debtors,debtMap);
 }
@@ -1162,7 +1162,7 @@ window.setMF=f=>{mFilter=f;loadManage();};
 function renderManage(all,debtors,debtMap){
   const el=$('mgr-body');if(!el)return;
   if(mFilter==='all'){
-    if(!all.length){el.innerHTML='<div class="empty"><div class="emi">📋</div><div class="emt">Chua co tran nao</div></div>';return;}
+    if(!all.length){el.innerHTML='<div class="empty"><div class="emi">📋</div><div class="emt">Chưa có trận nào</div></div>';return;}
     // Build using DOM
     el.innerHTML='';
     all.forEach(function(m){
@@ -1187,7 +1187,7 @@ function renderManage(all,debtors,debtMap){
         const av=document.createElement('div');av.className='pav '+(paid?'av-g':'av-a');av.style.cssText='width:32px;height:32px;font-size:11px;';av.textContent=name.charAt(0);
         const info=document.createElement('div');info.className='pi';info.innerHTML='<div class="pn">'+name+'</div><div class="pd">'+fX(price)+'</div>';
         const ctrl=document.createElement('div');ctrl.style.cssText='display:flex;align-items:center;gap:5px;';
-        const badge=document.createElement('span');badge.className='pill '+(paid?'pl-ok':'pl-no');badge.textContent=paid?'Da nop':'Chua';ctrl.appendChild(badge);
+        const badge=document.createElement('span');badge.className='pill '+(paid?'pl-ok':'pl-no');badge.textContent=paid?'Đã nộp':'Chưa nộp';ctrl.appendChild(badge);
         if(!paid){const b=document.createElement('button');b.className='btn btn-sm btn-g';b.textContent='✓';b.onclick=(function(mid,uid,name,price){return function(e){e.stopPropagation();doMarkPaid(mid,uid,name,price);};})(m.id,uid,name,price);ctrl.appendChild(b);}
         if(paid&&isAdmin){const b=document.createElement('button');b.className='btn btn-sm btn-a';b.style.fontSize='10px';b.textContent='↩';b.onclick=(function(mid,uid,price){return function(e){e.stopPropagation();doUnmarkPaid(mid,uid,price);};})(m.id,uid,price);ctrl.appendChild(b);}
         row.append(av,info,ctrl);body.appendChild(row);
@@ -1199,18 +1199,18 @@ function renderManage(all,debtors,debtMap){
         const av=document.createElement('div');av.className='pav av-r';av.style.cssText='width:32px;height:32px;font-size:11px;';av.textContent=name.charAt(0);
         const info=document.createElement('div');info.className='pi';info.innerHTML='<div class="pn">'+name+'</div><div class="pd">⚠️ Phat - '+fX(PRICE_PENALTY)+'</div>';
         const ctrl=document.createElement('div');ctrl.style.cssText='display:flex;align-items:center;gap:5px;';
-        const badge=document.createElement('span');badge.className='pill '+(paid?'pl-ok':'pl-no');badge.textContent=paid?'Da nop':'Chua';ctrl.appendChild(badge);
+        const badge=document.createElement('span');badge.className='pill '+(paid?'pl-ok':'pl-no');badge.textContent=paid?'Đã nộp':'Chưa nộp';ctrl.appendChild(badge);
         if(!paid){const penUid='p_'+uid;const b=document.createElement('button');b.className='btn btn-sm btn-g';b.textContent='✓';b.onclick=(function(mid,puid,name){return function(e){e.stopPropagation();doMarkPaid(mid,puid,name,PRICE_PENALTY);};})(m.id,penUid,name);ctrl.appendChild(b);}
         row.append(av,info,ctrl);body.appendChild(row);
       });
       const footer=document.createElement('div');
       footer.style.cssText='display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-top:8px;';
-      footer.innerHTML='<span>Da thu</span><span style="font-weight:700;color:var(--g);">'+fX(m.collectedAmount||0)+' / '+fX(m.totalAmount||0)+'</span>';
+      footer.innerHTML='<span>Đã thu</span><span style="font-weight:700;color:var(--g);">'+fX(m.collectedAmount||0)+' / '+fX(m.totalAmount||0)+'</span>';
       body.appendChild(footer);
       item.append(head,body);el.appendChild(item);
     });
   }else if(mFilter==='debt'){
-    if(!debtors.length){el.innerHTML='<div class="clear-hero"><div style="font-size:28px;">🎉</div><div style="font-weight:800;color:var(--g);margin-top:8px;">Khong ai no!</div></div>';return;}
+    if(!debtors.length){el.innerHTML='<div class="clear-hero"><div style="font-size:28px;">🎉</div><div style="font-weight:800;color:var(--g);margin-top:8px;">Không ai nợ!</div></div>';return;}
     el.innerHTML='';
     debtors.forEach(function(d){
       const item=document.createElement('div');item.className='acc-item';
@@ -1219,7 +1219,7 @@ function renderManage(all,debtors,debtMap){
         '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:800;color:var(--r);">'+fX(d.debt)+'</span><span class="acc-arrow">▼</span></div>';
       head.onclick=function(){item.classList.toggle('open');};
       const body=document.createElement('div');body.className='acc-body';
-      body.innerHTML=d.matches.map(function(x){return '<div class="prow"><div class="pi"><div class="pn">'+x.date+'</div><div class="pd">'+(x.pen?'Phat vang':x.vl?'Vang lai x'+x.cnt:'')+'</div></div><div style="font-size:13px;font-weight:700;color:var(--r);">'+fX(x.price)+'</div></div>';}).join('');
+      body.innerHTML=d.matches.map(function(x){return '<div class="prow"><div class="pi"><div class="pn">'+x.date+'</div><div class="pd">'+(x.pen?'Phạt vắng':x.vl?'Vãng lai x'+x.cnt:'')+'</div></div><div style="font-size:13px;font-weight:700;color:var(--r);">'+fX(x.price)+'</div></div>';}).join('');
       item.append(head,body);el.appendChild(item);
     });
   }else if(mFilter==='person'){
@@ -1227,7 +1227,7 @@ function renderManage(all,debtors,debtMap){
       el.innerHTML='<div class="card">'+usnap.docs.map(function(d){const u=d.data();const debt=(debtMap[u.uid]||{debt:0}).debt;return '<div class="prow"><div class="pav '+(debt>0?'av-r':'av-g')+'" style="width:34px;height:34px;font-size:12px;">'+(u.name||'?').charAt(0).toUpperCase()+'</div><div class="pi"><div class="pn">'+u.name+'</div><div class="pd" style="font-size:10px;">'+u.email+'</div></div><div style="font-size:13px;font-weight:800;color:'+(debt>0?'var(--r)':'var(--g)')+';">'+(debt>0?fX(debt):'OK')+'</div></div>';}).join('')+'</div>';
     });
   }else if(mFilter==='edit'&&me.role==='admin'){
-    if(!all.length){el.innerHTML='<div class="empty"><div class="emi">📋</div><div class="emt">Chua co tran nao</div></div>';return;}
+    if(!all.length){el.innerHTML='<div class="empty"><div class="emi">📋</div><div class="emt">Chưa có trận nào</div></div>';return;}
     el.innerHTML='<div style="font-size:12px;color:var(--am);padding:8px 0 10px;">⚙️ Chinh ket qua — thay doi se anh huong tinh tien.</div>';
     all.forEach(function(m){
       const votes=m.votes||{},names=m.voteNames||{},teams=m.teams||{R:[],B:[]},pen=m.penalties||{};
@@ -1235,7 +1235,7 @@ function renderManage(all,debtors,debtMap){
       const item=document.createElement('div');item.className='acc-item';
       const head=document.createElement('div');head.className='acc-head';
       head.innerHTML='<div><div style="font-size:14px;font-weight:700;">'+(m.fieldName||'San bong')+'</div>'+
-        '<div style="font-size:11px;color:var(--am);">'+(m.dateLabel||m.id)+' - '+(m.resultLabel||'Chua co KQ')+'</div></div>'+
+        '<div style="font-size:11px;color:var(--am);">'+(m.dateLabel||m.id)+' - '+(m.resultLabel||'Chưa có KQ')+'</div></div>'+
         '<span class="acc-arrow">▼</span>';
       head.onclick=function(){item.classList.toggle('open');};
       const body=document.createElement('div');body.className='acc-body';
@@ -1243,7 +1243,7 @@ function renderManage(all,debtors,debtMap){
       const resWrap=document.createElement('div');resWrap.style.cssText='margin-bottom:10px;';
       resWrap.innerHTML='<div style="font-size:11px;color:var(--t2);margin-bottom:6px;">Ket qua tran</div>';
       const rbtns=document.createElement('div');rbtns.style.cssText='display:flex;gap:5px;flex-wrap:wrap;';
-      [['red','🔴 Do thang'],['blk','⚫ Den thang'],['draw','🤝 Hoa']].forEach(function([res,label]){
+      [['red','🔴 Đỏ thắng'],['blk','⚫ Đen thắng'],['draw','🤝 Hòa']].forEach(function([res,label]){
         const b=document.createElement('button');b.className='btn btn-sm';b.style.cssText='font-size:11px;'+(m.result===res?'font-weight:800;background:rgba(92,184,71,.2);color:var(--g);':'');b.textContent=label;
         b.onclick=(function(mid,res){return function(e){e.stopPropagation();adminEditResult(mid,res);};})(m.id,res);
         rbtns.appendChild(b);
@@ -1251,20 +1251,44 @@ function renderManage(all,debtors,debtMap){
       resWrap.appendChild(rbtns);body.appendChild(resWrap);
       const pdLabel=document.createElement('div');pdLabel.style.cssText='font-size:11px;color:var(--t2);margin-bottom:6px;';pdLabel.textContent='Phan doi va Phat';
       body.appendChild(pdLabel);
-      // Player rows
+      // Player rows - voted 'in'
       inP.forEach(function([uid]){
         const name=names[uid]||uid,inR=teams.R&&teams.R.includes(name),inB=teams.B&&teams.B.includes(name),isPen=pen[uid]===true;
         const row=document.createElement('div');row.className='prow';row.style.cssText='padding:6px 0;';
-        const av=document.createElement('div');av.className='pav av-b';av.style.cssText='width:28px;height:28px;font-size:10px;border-radius:50%;display:flex;align-items:center;justify-content:center;';av.textContent=name.charAt(0);
-        const info=document.createElement('div');info.className='pi';info.innerHTML='<div class="pn" style="font-size:12px;">'+name+'</div>';
+        const av=document.createElement('div');av.className='pav '+(isPen?'av-r':'av-b');av.style.cssText='width:28px;height:28px;font-size:10px;border-radius:50%;display:flex;align-items:center;justify-content:center;';av.textContent=name.charAt(0);
+        const info=document.createElement('div');info.className='pi';
+        info.innerHTML='<div class="pn" style="font-size:12px;">'+name+'</div>'+
+          '<div class="pd" style="font-size:10px;">'+(inR?'🔴 Đỏ':inB?'⚫ Đen':'Chưa phân')+'</div>';
         const ctrl=document.createElement('div');ctrl.style.cssText='display:flex;gap:4px;flex-wrap:wrap;';
-        const bR=document.createElement('button');bR.className='btn btn-sm';bR.style.cssText='font-size:10px;padding:4px 7px;'+(inR?'background:rgba(224,72,72,.2);color:#ff7070;':'');bR.textContent='🔴 Do';
+        const bR=document.createElement('button');bR.className='btn btn-sm';bR.style.cssText='font-size:10px;padding:4px 7px;'+(inR?'background:rgba(224,72,72,.2);color:#ff7070;':'');bR.textContent='🔴';
         bR.onclick=(function(mid,uid,name){return function(e){e.stopPropagation();adminSetTeam(mid,uid,name,'R');};})(m.id,uid,name);
-        const bB=document.createElement('button');bB.className='btn btn-sm';bB.style.cssText='font-size:10px;padding:4px 7px;'+(inB?'background:rgba(80,80,80,.2);color:#ccc;':'');bB.textContent='⚫ Den';
+        const bB=document.createElement('button');bB.className='btn btn-sm';bB.style.cssText='font-size:10px;padding:4px 7px;'+(inB?'background:rgba(80,80,80,.2);color:#ccc;':'');bB.textContent='⚫';
         bB.onclick=(function(mid,uid,name){return function(e){e.stopPropagation();adminSetTeam(mid,uid,name,'B');};})(m.id,uid,name);
-        const bP=document.createElement('button');bP.className='btn btn-sm '+(isPen?'btn-g':'btn-r');bP.style.cssText='font-size:10px;padding:4px 7px;';bP.textContent=isPen?'✓ Bo phat':'⚠ Phat';
+        const bP=document.createElement('button');bP.className='btn btn-sm '+(isPen?'btn-g':'btn-r');bP.style.cssText='font-size:10px;padding:4px 7px;';bP.textContent=isPen?'✓ Bỏ phạt':'⚠ Phạt';
         bP.onclick=(function(mid,uid,isPen){return function(e){e.stopPropagation();adminTogglePen(mid,uid,!isPen);};})(m.id,uid,isPen);
         ctrl.append(bR,bB,bP);row.append(av,info,ctrl);body.appendChild(row);
+      });
+      // Penalty section for ALL registered users (admin can penalize absent players)
+      getDocs(collection(db,'users')).then(function(usnap2){
+        const allUsers=usnap2.docs.map(d=>d.data());
+        const inUids=new Set(inP.map(([uid])=>uid));
+        const absentUsers=allUsers.filter(u=>!inUids.has(u.uid));
+        if(!absentUsers.length)return;
+        const penLabel=document.createElement('div');penLabel.style.cssText='font-size:11px;color:var(--t2);margin:10px 0 6px;padding-top:8px;border-top:1px dashed var(--bd2);';
+        penLabel.textContent='⚠️ Phạt cầu thủ vắng mặt';
+        body.appendChild(penLabel);
+        absentUsers.forEach(function(u){
+          const isPen=pen[u.uid]===true;
+          const row=document.createElement('div');row.className='prow';row.style.cssText='padding:5px 0;';
+          const av=document.createElement('div');av.className='pav '+(isPen?'av-r':'av-a');av.style.cssText='width:26px;height:26px;font-size:10px;border-radius:50%;display:flex;align-items:center;justify-content:center;';av.textContent=(u.name||'?').charAt(0);
+          const info=document.createElement('div');info.className='pi';
+          info.innerHTML='<div class="pn" style="font-size:12px;">'+u.name+'</div>'+
+            '<div class="pd" style="font-size:10px;">'+(votes[u.uid]==='out'?'Báo nghỉ':'Không bình chọn')+'</div>';
+          const ctrl=document.createElement('div');ctrl.style.cssText='display:flex;gap:4px;';
+          const bP=document.createElement('button');bP.className='btn btn-sm '+(isPen?'btn-g':'btn-r');bP.style.cssText='font-size:10px;padding:4px 8px;';bP.textContent=isPen?'✓ Bỏ phạt':'⚠ Phạt 40k';
+          bP.onclick=(function(mid,uid,isPen){return function(e){e.stopPropagation();adminTogglePen(mid,uid,!isPen);};})(m.id,u.uid,isPen);
+          ctrl.appendChild(bP);row.append(av,info,ctrl);body.appendChild(row);
+        });
       });
       item.append(head,body);el.appendChild(item);
     });
@@ -1299,7 +1323,7 @@ window.adminSetTeam=async(mid,uid,name,team)=>{
 window.adminTogglePen=async(mid,uid,val)=>{
   val=val==='true'||val===true;
   await updateDoc(doc(db,'matches',mid),{['penalties.'+uid]:val});
-  toast(val?'Da phat!':'Da bo phat','ok');loadManage();
+  toast(val?'Đã phạt!':'Đã bỏ phạt','ok');loadManage();
 };
 
 </script>
