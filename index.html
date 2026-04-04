@@ -893,6 +893,23 @@ async function loadTeam(){
   el.appendChild(listWrap);
 }
 
+window.doLock=(uid,name)=>showConfirm('🔒 Khóa '+name+'?',name+' sẽ không thể tham gia bình chọn.','Khóa','btn-r',async()=>{
+  await updateDoc(doc(db,'users',uid),{approved:false});
+  toast('🔒 Đã khóa '+name,'ok');loadTeam();
+});
+window.doUnlock=(uid,name)=>showConfirm('🔓 Mở khóa '+name+'?',name+' sẽ có thể bình chọn lại.','Mở khóa','btn-g',async()=>{
+  await updateDoc(doc(db,'users',uid),{approved:true});
+  toast('✅ Đã mở khóa '+name,'ok');loadTeam();
+});
+window.doWarn=(uid,name)=>showConfirm('⚠️ Cảnh cáo '+name+'?',name+' sẽ nhận thông báo nhắc nhở trên hồ sơ.','Gửi cảnh cáo','btn-a',async()=>{
+  await updateDoc(doc(db,'users',uid),{warning:true,warningMsg:'⚠️ Bạn bị cảnh cáo vì không bình chọn đều. Hãy tham gia đá đều hơn nhé!',warningAt:Date.now()});
+  toast('⚠️ Đã gửi cảnh cáo!','ok');loadTeam();
+});
+window.doSetRole=(uid,role)=>showConfirm('Đổi quyền thành "'+{player:'Cầu thủ',host:'Host',admin:'Admin'}[role]+'"?','Thay đổi có hiệu lực khi họ đăng nhập lại.','Xác nhận','btn-p',async()=>{
+  await updateDoc(doc(db,'users',uid),{role});
+  toast('✅ Đã đổi quyền!','ok');loadTeam();
+});
+
 async function loadProfile(){
   const el=$('pg-profile');el.innerHTML=spin();
   const[msnap,usnap2]=await Promise.all([getDocs(collection(db,'matches')),getDoc(doc(db,'users',me.uid))]);
